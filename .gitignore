@@ -1,0 +1,13 @@
+# Derleme ciktilari
+/client
+/server
+*.o
+*.gch
+
+# Alinan dosyalar ve yerel test ciktilari
+/alinanlar/
+
+# Editor ve sistem dosyalari
+.vscode/
+.DS_Store
+*~
