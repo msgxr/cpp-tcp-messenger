@@ -277,14 +277,14 @@ Merhaba TCP
 Test görüntüsü göndermek için:
 
 ```text
-!resim 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/Test_Verileri/foto1.jpg
+!resim foto1.jpg
 ```
 
 Desteklenen komutlar:
 
 | Komut | İşlev |
 |---|---|
-| `!resim <dosya_yolu>` | JPG/JPEG/PNG görüntü gönderir. |
+| `!resim <dosya_adı veya dosya_yolu>` | JPG/JPEG/PNG görüntü gönderir. Yalın adlar test klasöründe aranır. |
 | `!durum` | Aktif bağlantı durumunu gösterir. |
 | `!temizle` | Terminal ekranını temizler. |
 | `!yardim` | Kullanılabilir komutları gösterir. |
@@ -473,5 +473,8 @@ bash "$b/dogrula.sh"
 bash "$b/calistir.sh"
 ```
 
-Gösterimde istemciye `!resim 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/Test_Verileri/piksel_test.png` yazın. Alıcı CRC32 doğrular, dosyayı kaydeder ve renkli piksel bloklarıyla gösterir.
+Gösterimde istemciye `!resim piksel_test.png` yazın. Yalın dosya adları otomatik olarak
+`03_Test_ve_Dogrulama_Calismalari/Test_Verileri` klasöründe aranır. Windows Gezgini'nden
+sürüklenen tırnaklı yollar temizlenir ve `C:\...` yolları WSL biçimine çevrilir. Alıcı
+CRC32 doğrular, dosyayı kaydeder ve renkli piksel bloklarıyla gösterir.
 <!-- TCP_HAZIRLIK_END -->
