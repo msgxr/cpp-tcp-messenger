@@ -24,6 +24,10 @@ inline constexpr const char* YELLOW = "\033[33m";
 inline constexpr const char* RED = "\033[31m";
 inline constexpr const char* MAGENTA = "\033[35m";
 inline constexpr const char* BLUE = "\033[34m";
+inline constexpr const char* WHITE = "\033[97m";
+inline constexpr const char* BG_PANEL = "\033[48;5;236m";
+inline constexpr const char* BG_MINE = "\033[48;5;24m";
+inline constexpr const char* BG_THEIRS = "\033[48;5;237m";
 
 inline int columns() {
     winsize size{};
@@ -65,6 +69,38 @@ inline void border(const char* left, const char* fill, const char* right, int wi
     std::cout << right << '\n';
 }
 
+inline int panel_width() {
+    return std::max(36, std::min(72, columns() - 4));
+}
+
+inline void section_title(const std::string& title, const char* color) {
+    const int width = panel_width();
+    std::cout << color << BOLD << "┌─ " << title << ' ';
+    const int fill = std::max(0, width - static_cast<int>(utf8_length(title)) - 4);
+    for (int i = 0; i < fill; ++i) std::cout << "─";
+    std::cout << "┐\n" << RESET;
+}
+
+inline void bubble(const std::string& label, const std::string& text, const char* color,
+                   const char* background) {
+    const int width = panel_width();
+    const int content_width = width - 6;
+    std::cout << background << color << BOLD << "  " << label << RESET << background << '\n';
+    for (const auto& line : wrap(text, static_cast<size_t>(content_width))) {
+        std::cout << background << "  " << WHITE << line
+                  << std::string(static_cast<size_t>(
+                      std::max(0, content_width - static_cast<int>(utf8_length(line)))), ' ')
+                  << "  " << RESET << '\n';
+    }
+    std::cout << RESET;
+}
+
+inline void section_end() {
+    std::cout << DIM << "└";
+    for (int i = 0; i < panel_width() - 1; ++i) std::cout << "─";
+    std::cout << "┘" << RESET << '\n';
+}
+
 inline void boxed_line(const std::string& text, int width) {
     for (const auto& line : wrap(text, static_cast<size_t>(width - 2))) {
         std::cout << "║ " << line
@@ -98,7 +134,7 @@ inline void banner(const std::string& role, const std::string& endpoint) {
     std::cout << RESET << DIM
               << "Komutlar  !yardim  !durum  !temizle  !resim  cikis\n"
               << "          Görseli sürükle → Enter\n"
-              << RESET << '\n' << std::flush;
+              << RESET << "────────────────────────────────────────\n" << std::flush;
 }
 
 inline void status(const std::string& text) {
@@ -119,20 +155,25 @@ inline void error(const std::string& text) {
 }
 inline void prompt() {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << MAGENTA << BOLD << "Sen ❯ " << RESET << std::flush;
+    std::cout << '\n' << MAGENTA << BOLD << "╰─ Sen ❯ " << RESET << std::flush;
 }
 
 inline void message_box(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    const int width = std::min(58, columns() - 2);
-    std::cout << '\n' << BLUE << BOLD;
-    border("┌", "─", "┐", width);
-    std::cout << "│  GELEN MESAJ\n" << RESET;
-    for (const auto& line : wrap(text, static_cast<size_t>(width - 2)))
-        std::cout << BLUE << "│ " << RESET << line << '\n';
-    std::cout << BLUE;
-    border("└", "─", "┘", width);
-    std::cout << RESET << std::flush;
+    std::cout << '\n';
+    section_title("GELEN MESAJ", BLUE);
+    bubble("● KARŞI TARAF", text, BLUE, BG_THEIRS);
+    section_end();
+    std::cout << std::flush;
+}
+
+inline void sent_card(const std::string& text) {
+    std::lock_guard<std::mutex> lock(out_mutex);
+    std::cout << '\n';
+    section_title("GÖNDERİLDİ", MAGENTA);
+    bubble("● SEN", text, MAGENTA, BG_MINE);
+    section_end();
+    std::cout << std::flush;
 }
 
 inline std::string shell_quote(const std::string& s) {
@@ -148,11 +189,13 @@ inline void image_card(const std::string& path, uint32_t bytes, uint32_t checksu
     int preview_result = 0;
     {
         std::lock_guard<std::mutex> lock(out_mutex);
-        std::cout << '\n' << GREEN << "[ GELEN GÖRSEL ]\n" << RESET
-                  << "  Dosya : " << compact_path(path, 52) << '\n'
-                  << "  Boyut : " << bytes << " bayt\n"
-                  << "  CRC32 : 0x" << std::hex << std::uppercase << checksum << std::dec
-                  << GREEN << " DOĞRULANDI ✓\n" << RESET << std::flush;
+        std::cout << '\n';
+        section_title("GELEN GÖRSEL", GREEN);
+        std::cout << BG_THEIRS << "  " << GREEN << BOLD << "● GÖRSEL MESAJI" << RESET << BG_THEIRS << '\n'
+                  << BG_THEIRS << "  " << WHITE << "Dosya : " << compact_path(path, 52) << '\n'
+                  << BG_THEIRS << "  " << WHITE << "Boyut : " << bytes << " bayt\n"
+                  << BG_THEIRS << "  " << WHITE << "CRC32 : 0x" << std::hex << std::uppercase << checksum
+                  << std::dec << "  " << GREEN << "DOĞRULANDI ✓" << RESET << '\n' << RESET;
         const int width = std::max(16, std::min(58, columns() - 2));
         // Keep options compatible with chafa 1.2.x and Windows Terminal/WSL.
         const std::string size = std::to_string(width) + "x20";
@@ -165,6 +208,7 @@ inline void image_card(const std::string& path, uint32_t bytes, uint32_t checksu
                 "--colors none --symbols block --duration 0 --size " + size + " -- " + quoted_path;
             preview_result = std::system(fallback_command.c_str());
         }
+        section_end();
     }
     if (preview_result != 0)
         warn("Görsel kaydedildi; terminal önizlemesi gösterilemedi. kur.sh ile chafa kurulumunu kontrol edin.");

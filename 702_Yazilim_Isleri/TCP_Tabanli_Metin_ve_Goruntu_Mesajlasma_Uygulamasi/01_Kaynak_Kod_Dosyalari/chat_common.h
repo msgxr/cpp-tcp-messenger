@@ -146,7 +146,8 @@ inline bool send_image_message(int sock, const std::string& filepath) {
             last_percent = percent;
         }
     }
-    ui::status("Görsel gönderildi: " + filename + " | CRC32 doğrulama değeri hazır.");
+    ui::sent_card("Görsel: " + filename + "  •  " + std::to_string(size) +
+                  " bayt  •  CRC32 hazır");
     return true;
 }
 

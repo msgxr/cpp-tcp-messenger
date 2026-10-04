@@ -134,7 +134,7 @@ inline void run_console(int sock, const std::string& role, const std::string& en
             ui::error("Mesaj gönderilemedi; bağlantı kapanmış olabilir.");
             break;
         }
-        ui::status("Metin gönderildi.");
+        ui::sent_card(line);
     }
     connected.store(false);
     ui::info("Bağlantı kapatılıyor...");
