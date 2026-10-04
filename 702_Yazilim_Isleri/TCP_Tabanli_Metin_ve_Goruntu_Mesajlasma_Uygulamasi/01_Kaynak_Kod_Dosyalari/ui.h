@@ -172,6 +172,7 @@ inline void help() {
     std::cout << YELLOW << BOLD << "\nKOMUTLAR\n" << RESET
               << "  normal metin          Karşı tarafa metin gönderir\n"
               << "  !resim <dosya>        JPG/JPEG/PNG görsel gönderir\n"
+              << "  dosya sürükle-bırak   Görseli komutsuz otomatik gönderir\n"
               << "  !durum                Bağlantı durumunu gösterir\n"
               << "  !temizle              Terminali temizler\n"
               << "  !yardim               Bu menüyü gösterir\n"

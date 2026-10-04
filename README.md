@@ -477,4 +477,6 @@ Gösterimde istemciye `!resim piksel_test.png` yazın. Yalın dosya adları otom
 `03_Test_ve_Dogrulama_Calismalari/Test_Verileri` klasöründe aranır. Windows Gezgini'nden
 sürüklenen tırnaklı yollar temizlenir ve `C:\...` yolları WSL biçimine çevrilir. Alıcı
 CRC32 doğrular, dosyayı kaydeder ve renkli piksel bloklarıyla gösterir.
+Görseli Windows Gezgini'nden terminale sürükleyip yalnızca Enter'a basmak da yeterlidir;
+JPG/JPEG/PNG yolu otomatik olarak görsel aktarımı kabul edilir.
 <!-- TCP_HAZIRLIK_END -->

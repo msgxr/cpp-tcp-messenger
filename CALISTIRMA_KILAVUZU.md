@@ -38,6 +38,10 @@ WSL yoluna çevrilir. Alıcı dosyayı kaydeder, CRC32 doğrular ve renkli pikse
 terminalde gösterir. Önizleme ölçeklenir; kaydedilen dosyanın baytları değişmez.
 Boşluklu bir dosya yolu çift tırnak içine alınabilir.
 
+Artık Windows Gezgini'nden görseli terminale sürükleyip yalnızca Enter'a basmak yeterlidir;
+`!resim` yazmak zorunlu değildir. JPG/JPEG/PNG dosyası otomatik olarak ikili görsel
+paketi olarak gönderilir, karşı tarafta `chafa` ile piksel blokları gösterilir.
+
 `!yardim`, `!durum`, `!temizle` ve `cikis` komutları her iki tarafta çalışır. Aynı adlı dosyalar ayrı adlarla kaydedilir. Bağlantı koptuğunda uygulama otomatik kapanır. Alınan dosyalar `04_Uygulama_Ciktilari/Alinan_Dosyalar` altındadır.
 
 ## VS Code

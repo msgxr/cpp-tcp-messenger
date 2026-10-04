@@ -120,6 +120,12 @@ inline void run_console(int sock, const std::string& role, const std::string& en
             send_image_message(sock, path);
             continue;
         }
+        // A path pasted or dragged from Explorer is an image command by itself.
+        const std::string dropped_path = resolve_image_path(line);
+        if (fs::is_regular_file(dropped_path) && valid_image_extension(dropped_path)) {
+            send_image_message(sock, dropped_path);
+            continue;
+        }
         if (line.size() > MAX_TEXT_SIZE) {
             ui::error("Metin 1 MB'dan büyük olamaz.");
             continue;
