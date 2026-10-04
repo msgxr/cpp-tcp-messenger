@@ -459,3 +459,19 @@ Kaynak kod değişiklikleri Git commit geçmişi üzerinden izlenir. Dosya adlar
 ## 21. Lisans ve Kullanım
 
 Bu depo akademik ders projesi kapsamında hazırlanmıştır. Kodun yeniden kullanımı veya geliştirilmesi durumunda proje kaynağının belirtilmesi önerilir.
+
+<!-- TCP_HAZIRLIK_BEGIN -->
+## Otomatik doğrulama ve gösterim
+
+Temiz derleme, 36 kontrol, iki yönlü PNG/JPG aktarımı, renkli piksel önizlemesi ve VS Code görevleri hazırdır. Güncel başlangıç adımları [Çalıştırma Kılavuzu](CALISTIRMA_KILAVUZU.md), ayrıntılı test kapsamı [Test Kapsamı](702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/TEST_KAPSAMI.md) dosyasındadır. GitHub Actions her gönderimde aynı doğrulamayı çalıştırır.
+
+WSL/Linux terminalinde proje kökünden:
+
+```bash
+b="702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari"
+bash "$b/dogrula.sh"
+bash "$b/calistir.sh"
+```
+
+Gösterimde istemciye `!resim 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/Test_Verileri/piksel_test.png` yazın. Alıcı CRC32 doğrular, dosyayı kaydeder ve renkli piksel bloklarıyla gösterir.
+<!-- TCP_HAZIRLIK_END -->

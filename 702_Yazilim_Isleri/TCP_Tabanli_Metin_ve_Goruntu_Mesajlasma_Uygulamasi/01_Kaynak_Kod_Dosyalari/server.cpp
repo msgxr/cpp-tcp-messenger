@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
-#include "chat_common.h"
+#include "console.h"
 
 constexpr int PORT = 5000;
 
@@ -57,32 +57,8 @@ int main() {
     ui::status(std::string("İstemci bağlandı: ") + ip);
     ui::info("Protokol: TCP + 11 bayt üst bilgi + CRC32 bütünlük kontrolü");
 
-    std::thread receiver(receive_loop, client_socket);
-
-    std::string line;
-    while (true) {
-        ui::prompt();
-        if (!std::getline(std::cin, line)) break;
-        if (line.empty()) continue;
-        if (line == "cikis") break;
-        if (line == "!yardim") { ui::help(); continue; }
-        if (line == "!durum") { ui::status("Sunucu aktif; istemci bağlantısı açık."); continue; }
-        if (line == "!temizle") { ui::clear(); ui::banner("SUNUCU", "0.0.0.0:5000"); continue; }
-        if (line.rfind("!resim ", 0) == 0) {
-            send_image_message(client_socket, line.substr(7));
-            continue;
-        }
-        if (!send_text_message(client_socket, line)) {
-            ui::error("Mesaj gönderilemedi; bağlantı kapanmış olabilir.");
-            break;
-        }
-        ui::status("Metin gönderildi.");
-    }
-
-    ui::info("Bağlantı kapatılıyor...");
-    shutdown(client_socket, SHUT_RDWR);
+    run_console(client_socket, "SUNUCU", "0.0.0.0:5000");
     close(client_socket);
     close(server_fd);
-    if (receiver.joinable()) receiver.join();
     return 0;
 }

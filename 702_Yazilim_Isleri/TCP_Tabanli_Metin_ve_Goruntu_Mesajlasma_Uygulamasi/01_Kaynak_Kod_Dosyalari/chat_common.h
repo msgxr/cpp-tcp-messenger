@@ -2,6 +2,8 @@
 #define CHAT_COMMON_H
 
 #include <ctime>
+#include <cerrno>
+#include <fcntl.h>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -60,6 +62,7 @@ inline bool file_crc32(const std::string& filepath, uint32_t& result) {
         std::streamsize n = file.gcount();
         if (n > 0) crc = crc32_update(crc, buffer.data(), static_cast<size_t>(n));
     }
+    if (file.bad()) return false;
     result = crc32_end(crc);
     return true;
 }
@@ -94,8 +97,8 @@ inline bool send_image_message(int sock, const std::string& filepath) {
         return false;
     }
     std::streamsize sz = file.tellg();
-    if (sz < 0 || static_cast<uint64_t>(sz) > MAX_IMAGE_SIZE) {
-        ui::error("Görsel 50 MB'dan büyük olamaz.");
+    if (sz <= 0 || static_cast<uint64_t>(sz) > MAX_IMAGE_SIZE) {
+        ui::error("Görsel boş olamaz ve 50 MB'dan büyük olamaz.");
         return false;
     }
     uint32_t size = static_cast<uint32_t>(sz);
@@ -178,7 +181,7 @@ inline bool receive_one(int sock) {
         return true;
     }
 
-    if (filename_len == 0 || filename_len > 255 || data_size > MAX_IMAGE_SIZE) {
+    if (filename_len == 0 || filename_len > 255 || data_size == 0 || data_size > MAX_IMAGE_SIZE) {
         ui::error("Geçersiz görsel paketi.");
         return false;
     }
@@ -192,9 +195,22 @@ inline bool receive_one(int sock) {
     }
 
     fs::create_directories("702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar");
-    fs::path save_path = unique_save_path("702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar", filename);
+    const fs::path output_dir = "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar";
+    fs::path save_path;
+    int reserved = -1;
+    for (int attempt = 0; attempt < 10000; ++attempt) {
+        save_path = unique_save_path(output_dir, filename);
+        reserved = ::open(save_path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        if (reserved >= 0 || errno != EEXIST) break;
+    }
+    if (reserved < 0) {
+        ui::error("Alınan dosya için benzersiz kayıt yolu oluşturulamadı.");
+        return false;
+    }
+    ::close(reserved);
     std::ofstream out(save_path, std::ios::binary);
     if (!out) {
+        fs::remove(save_path);
         ui::error("Alınan dosya oluşturulamadı.");
         return false;
     }
@@ -213,6 +229,12 @@ inline bool receive_one(int sock) {
             return false;
         }
         out.write(reinterpret_cast<char*>(buffer.data()), n);
+        if (!out) {
+            out.close();
+            fs::remove(save_path);
+            ui::error("Alınan görsel diske yazılamadı.");
+            return false;
+        }
         crc = crc32_update(crc, buffer.data(), n);
         remaining -= n;
         received += n;
@@ -223,6 +245,11 @@ inline bool receive_one(int sock) {
         }
     }
     out.close();
+    if (!out) {
+        fs::remove(save_path);
+        ui::error("Alınan görsel dosyası tamamlanamadı.");
+        return false;
+    }
     uint32_t actual_crc = crc32_end(crc);
     if (actual_crc != expected_crc) {
         fs::remove(save_path);

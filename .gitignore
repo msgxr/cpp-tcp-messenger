@@ -18,3 +18,20 @@
 .vscode/
 .DS_Store
 *~
+
+# TCP_HAZIRLIK_BEGIN
+# Otomatik dogrulama ve yerel uygulama ciktilari
+/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/Test_Sonuclari/
+/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/Derlenmis_Uygulama_Dosyalari/
+/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar/*
+!/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar/.gitkeep
+__pycache__/
+/server
+/client
+
+# GitHub'a dahil edilen ortak VS Code gorevleri
+!/.vscode/
+/.vscode/*
+!/.vscode/tasks.json
+!/.vscode/extensions.json
+# TCP_HAZIRLIK_END
