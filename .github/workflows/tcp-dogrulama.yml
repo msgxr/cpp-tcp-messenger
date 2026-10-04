@@ -1,22 +1,24 @@
-name: TCP derleme ve dogrulama
+﻿name: TCP derleme ve dogrulama
+
 on:
   push:
+    branches: [ main ]
   pull_request:
-  workflow_dispatch:
-permissions:
-  contents: read
+    branches: [ main ]
+
 jobs:
   dogrulama:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: Temiz derleme ve 36 kontrol
-        run: bash "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/dogrula.sh"
-      - name: Test raporu
-        if: always()
+      - name: Depoyu klonla
+        uses: actions/checkout@v4
+
+      - name: Gerekli araclari kur
         run: |
-          report="702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/Test_Sonuclari/SON_TEST_RAPORU.md"
-          if [ -f "$report" ]; then cat "$report" >> "$GITHUB_STEP_SUMMARY"; fi
+          sudo apt-get update
+          sudo apt-get install -y build-essential chafa tmux
+
+      - name: Temiz derleme ve C++ dogrulama
+        run: |
+          chmod +x 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/*.sh
+          bash 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/dogrula.sh

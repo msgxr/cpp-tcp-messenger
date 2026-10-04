@@ -35,3 +35,6 @@ __pycache__/
 !/.vscode/tasks.json
 !/.vscode/extensions.json
 # TCP_HAZIRLIK_END
+
+dogrula_cpp
+
