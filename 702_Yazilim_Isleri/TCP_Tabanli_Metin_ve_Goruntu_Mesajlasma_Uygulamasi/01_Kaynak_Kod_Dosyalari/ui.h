@@ -145,9 +145,8 @@ inline void image_card(const std::string& path, uint32_t bytes, uint32_t checksu
                   << "  CRC32 : 0x" << std::hex << std::uppercase << checksum << std::dec
                   << GREEN << " DOĞRULANDI ✓\n" << RESET << std::flush;
         const int width = std::max(16, std::min(58, columns() - 2));
-        const std::string format = std::system("chafa --help 2>/dev/null | grep -q -- --format") == 0
-            ? " --format symbols" : "";
-        const std::string command = "timeout 10s chafa" + format + " --colors full --symbols block --duration 0 --size "
+        // Keep options compatible with chafa 1.2.x (the WSL package version).
+        const std::string command = "timeout 10s chafa --colors full --symbols block --duration 0 --size "
             + std::to_string(width) + "x20 -- " + shell_quote(path);
         preview_result = std::system(command.c_str());
     }
