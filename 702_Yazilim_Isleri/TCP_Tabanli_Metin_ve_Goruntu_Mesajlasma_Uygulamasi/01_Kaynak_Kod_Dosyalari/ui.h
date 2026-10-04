@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -71,6 +72,14 @@ inline void boxed_line(const std::string& text, int width) {
     }
 }
 
+inline std::string compact_path(const std::string& path, size_t max_length) {
+    const std::string name = std::filesystem::path(path).filename().string();
+    if (name.size() >= max_length) return name.substr(0, max_length - 3) + "...";
+    if (path.size() <= max_length) return path;
+    const size_t tail = std::min(name.size() + 5, max_length / 2);
+    return path.substr(0, max_length - tail - 3) + "..." + path.substr(path.size() - tail);
+}
+
 inline void clear() {
     std::lock_guard<std::mutex> lock(out_mutex);
     std::cout << "\033[2J\033[H" << std::flush;
@@ -78,47 +87,47 @@ inline void clear() {
 
 inline void banner(const std::string& role, const std::string& endpoint) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    const int width = std::min(68, columns() - 2);
+    const int width = std::min(58, columns() - 2);
     std::cout << CYAN << BOLD;
     border("╔", "═", "╗", width);
-    boxed_line("TCP METİN + GÖRÜNTÜ MESAJLAŞMA SİSTEMİ", width);
+    boxed_line("TCP CHAT  •  METİN + GÖRÜNTÜ", width);
     border("╠", "═", "╣", width);
     boxed_line("Rol      : " + role, width);
     boxed_line("Uç Nokta : " + endpoint, width);
     border("╚", "═", "╝", width);
-    std::cout << RESET << DIM;
-    for (const auto& line : wrap("Komutlar: !yardim  !durum  !temizle  !resim <dosya>  cikis", columns()))
-        std::cout << line << '\n';
-    std::cout << RESET << '\n' << std::flush;
+    std::cout << RESET << DIM
+              << "Komutlar  !yardim  !durum  !temizle  !resim  cikis\n"
+              << "          Görseli sürükle → Enter\n"
+              << RESET << '\n' << std::flush;
 }
 
 inline void status(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << GREEN << BOLD << "[✓] " << RESET << text << '\n' << std::flush;
+    std::cout << GREEN << BOLD << "✓ " << RESET << text << '\n' << std::flush;
 }
 inline void info(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << CYAN << "[i] " << RESET << text << '\n' << std::flush;
+    std::cout << CYAN << "· " << RESET << text << '\n' << std::flush;
 }
 inline void warn(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << YELLOW << "[!] " << RESET << text << '\n' << std::flush;
+    std::cout << YELLOW << "! " << RESET << text << '\n' << std::flush;
 }
 inline void error(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cerr << RED << BOLD << "[X] " << RESET << text << '\n' << std::flush;
+    std::cerr << RED << BOLD << "× " << RESET << text << '\n' << std::flush;
 }
 inline void prompt() {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << MAGENTA << BOLD << "Sen > " << RESET << std::flush;
+    std::cout << MAGENTA << BOLD << "Sen ❯ " << RESET << std::flush;
 }
 
 inline void message_box(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    const int width = std::min(68, columns() - 2);
-    std::cout << '\n' << BLUE;
+    const int width = std::min(58, columns() - 2);
+    std::cout << '\n' << BLUE << BOLD;
     border("┌", "─", "┐", width);
-    std::cout << "│ GELEN MESAJ\n" << RESET;
+    std::cout << "│  GELEN MESAJ\n" << RESET;
     for (const auto& line : wrap(text, static_cast<size_t>(width - 2)))
         std::cout << BLUE << "│ " << RESET << line << '\n';
     std::cout << BLUE;
@@ -140,7 +149,7 @@ inline void image_card(const std::string& path, uint32_t bytes, uint32_t checksu
     {
         std::lock_guard<std::mutex> lock(out_mutex);
         std::cout << '\n' << GREEN << "[ GELEN GÖRSEL ]\n" << RESET
-                  << "  Dosya : " << path << '\n'
+                  << "  Dosya : " << compact_path(path, 52) << '\n'
                   << "  Boyut : " << bytes << " bayt\n"
                   << "  CRC32 : 0x" << std::hex << std::uppercase << checksum << std::dec
                   << GREEN << " DOĞRULANDI ✓\n" << RESET << std::flush;
