@@ -148,18 +148,13 @@ inline void image_card(const std::string& path, uint32_t bytes, uint32_t checksu
         // Keep options compatible with chafa 1.2.x and Windows Terminal/WSL.
         const std::string size = std::to_string(width) + "x20";
         const std::string quoted_path = shell_quote(path);
-        const std::string color_command = "TERM=xterm-256color timeout 10s chafa "
-            "--colors full --symbols block --duration 0 --size " + size + " -- " + quoted_path;
+        const std::string color_command = "chafa "
+            "--colors 256 --symbols block --duration 0 --size " + size + " -- " + quoted_path;
         preview_result = std::system(color_command.c_str());
         if (preview_result != 0) {
-            const std::string fallback_command = "TERM=xterm-256color timeout 10s chafa "
-                "--colors 256 --symbols block --duration 0 --size " + size + " -- " + quoted_path;
-            preview_result = std::system(fallback_command.c_str());
-        }
-        if (preview_result != 0) {
-            const std::string plain_command = "TERM=dumb timeout 10s chafa "
+            const std::string fallback_command = "chafa "
                 "--colors none --symbols block --duration 0 --size " + size + " -- " + quoted_path;
-            preview_result = std::system(plain_command.c_str());
+            preview_result = std::system(fallback_command.c_str());
         }
     }
     if (preview_result != 0)
