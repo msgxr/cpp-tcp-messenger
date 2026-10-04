@@ -1,0 +1,368 @@
+\documentclass[12pt,oneside,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[provide=*,turkish]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,graphicx}
+\usepackage{fancyhdr,url,array,float,tabularx,booktabs,enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,babel}
+\graphicspath{{./}{./figures/}}
+
+% Hocanın şablonundaki sayfa ölçüleri ve kurumsal üst/alt bilgi.
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\includegraphics[height=1.1cm]{arel_logo}}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{\footnotesize Arel Üniversitesi, Müh. Mim. Fak.
+Bilgisayar Mühendisliği. Türkoba Mahallesi, Erguvan Sokak,
+No:26, K 34537, Tepekent - Büyükçekmece, İstanbul}
+\renewcommand{\headrulewidth}{0pt}
+\setlength{\headheight}{36pt}
+\addtolength{\topmargin}{-24pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{\baselineskip}
+\addtolength{\voffset}{-1cm}
+\addtolength{\hoffset}{-1cm}
+\addtolength{\textwidth}{1.5cm}
+\addtolength{\headwidth}{1cm}
+\addtolength{\textheight}{2.8cm}
+\setlength{\emergencystretch}{2em}
+\setlength{\intextsep}{9pt}
+\setlength{\abovecaptionskip}{5pt}
+\setlist{itemsep=2pt,topsep=3pt,parsep=0pt,leftmargin=*}
+\AtBeginDocument{
+  \renewcommand{\abstractname}{Özet}
+  \renewcommand{\refname}{Kaynakça}
+  \renewcommand{\figurename}{Şekil}
+  \renewcommand{\tablename}{Tablo}
+}
+
+% Şekiller LaTeX içinde çizilir; ek görsel dosyası gerektirmez.
+\definecolor{lacivert}{HTML}{23435F}
+\definecolor{acikmavi}{HTML}{EBF2F8}
+\definecolor{acikyesil}{HTML}{EDF5EF}
+\definecolor{acikturuncu}{HTML}{FFF3E5}
+\tikzset{
+  kutu/.style={draw=lacivert,rounded corners=3pt,
+    fill=acikmavi,align=center,font=\small,
+    text width=3.5cm,minimum height=1cm,inner sep=5pt},
+  sonuc/.style={kutu,fill=acikyesil},
+  karar/.style={diamond,draw=lacivert,fill=acikturuncu,
+    aspect=2,align=center,font=\small,inner sep=3pt},
+  ok/.style={-{Stealth[length=2.2mm]},draw=lacivert,thick},
+  ciftok/.style={<->,>=Stealth,draw=lacivert,thick},
+  alan/.style={draw=lacivert,fill=acikmavi,align=center,
+    font=\small,minimum height=1.15cm,inner sep=4pt}
+}
+
+\title{C++ ile TCP Tabanlı\\Metin ve Görüntü Mesajlaşma Uygulaması}
+\author{Muhammed Sina Gün\\Bilgisayar Mühendisliği\\
+}
+\date{\today}
+
+\begin{document}
+
+% SAYFA 1
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+Bu çalışmada, iki kullanıcı arasında metin mesajlarının ve JPG/PNG biçimindeki görüntü dosyalarının çift yönlü aktarımını sağlayan TCP tabanlı bir mesajlaşma uygulaması geliştirilmektedir. Yazılım, Windows 11 üzerinde WSL2 içinde çalışan Ubuntu 20.04 LTS ortamında C++17 kullanılarak gerçekleştirilmektedir. Testler aynı bilgisayarda Visual Studio Code ve iki terminal üzerinden yürütülmektedir. Aktarılan içeriğin türü, boyutu ve CRC32 bütünlük değeri uygulama düzeyinde tanımlanan bir üst bilgi aracılığıyla alıcıya bildirilmektedir. Alınan metin mesajları terminalde görüntülenmekte, görüntüler alıcı klasörüne kaydedilmektedir. Çalışmada TCP bağlantısı, metin ve ikili dosya aktarımı, eksik send/recv işlemlerinin tamamlanması ve veri bütünlüğü uygulamalı olarak incelenmektedir. İşlevsel doğruluk; çift yönlü iletişim, CRC32 denetimi ve alınan dosyaların kaynakla karşılaştırılması yoluyla değerlendirilmektedir.
+\end{abstract}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+% Kullanıcı A
+\draw[lacivert,thick] (-1.4,0.2) circle (0.22);
+\draw[lacivert,thick] (-1.4,-0.02) -- (-1.4,-0.9);
+\draw[lacivert,thick] (-1.9,-0.35) -- (-0.9,-0.35);
+\draw[lacivert,thick] (-1.4,-0.9) -- (-1.85,-1.45);
+\draw[lacivert,thick] (-1.4,-0.9) -- (-0.95,-1.45);
+\node[font=\small\bfseries] at (-1.4,-1.85) {Kullanıcı A};
+
+% Kullanıcı B
+\draw[lacivert,thick] (10.4,0.2) circle (0.22);
+\draw[lacivert,thick] (10.4,-0.02) -- (10.4,-0.9);
+\draw[lacivert,thick] (9.9,-0.35) -- (10.9,-0.35);
+\draw[lacivert,thick] (10.4,-0.9) -- (9.95,-1.45);
+\draw[lacivert,thick] (10.4,-0.9) -- (10.85,-1.45);
+\node[font=\small\bfseries] at (10.4,-1.85) {Kullanıcı B};
+
+% Sistem sınırı ve kullanım durumları
+\draw[draw=lacivert,rounded corners=6pt]
+  (0,-3.15) rectangle (9,0.95);
+\node[font=\small\bfseries,text=lacivert] at (4.5,0.62)
+  {TCP Mesajlaşma Uygulaması};
+\node[draw=lacivert,ellipse,fill=acikmavi,font=\small,
+  minimum width=3.5cm,minimum height=.75cm] (b) at (4.5,-0.25)
+  {Bağlantı kur};
+\node[draw=lacivert,ellipse,fill=acikyesil,font=\small,
+  minimum width=3.8cm,minimum height=.75cm] (m) at (4.5,-1.45)
+  {Metin gönder / al};
+\node[draw=lacivert,ellipse,fill=acikyesil,font=\small,
+  minimum width=4.8cm,minimum height=.75cm] (g) at (4.5,-2.65)
+  {Görüntü gönder / al ve kaydet};
+
+\draw[lacivert] (-0.9,-0.20) -- (b.west);
+\draw[lacivert] (-0.9,-0.40) -- (m.west);
+\draw[lacivert] (-0.9,-0.60) -- (g.west);
+\draw[lacivert] (9.9,-0.20) -- (b.east);
+\draw[lacivert] (9.9,-0.40) -- (m.east);
+\draw[lacivert] (9.9,-0.60) -- (g.east);
+\end{tikzpicture}
+\caption{UML kullanım senaryosu diyagramı. İki kullanıcı da metin ve görüntü aktarabilir.}
+\label{fig:ortam}
+\end{figure}
+
+\clearpage
+
+% SAYFA 2
+\section{Giriş}
+
+Bu projenin seçilmesindeki temel gerekçe, iki kullanıcı arasında metin ve görüntü aktarımını sağlayan ağ iletişimi süreçlerinin uygulamalı olarak incelenmesidir. TCP bağlantısı, görüntü dosyalarının ikili veri biçiminde iletilmesi, CRC32 ile bütünlük kontrolü ve alıcı tarafta yeniden oluşturulması ele alınarak kuramsal ağ bilgisinin soket programlamayla ilişkilendirilmesi amaçlanmaktadır. Uygulama Windows 11 üzerinde WSL2/Ubuntu 20.04 LTS ortamında C++17 ile geliştirilmekte; testler Visual Studio Code ve iki terminal üzerinden gerçekleştirilmektedir.
+
+\subsection{Amaç ve Kapsam}
+\begin{itemize}
+\item Bir sunucu ve bir istemci arasında karşılıklı metin ve
+JPG/PNG dosyası aktarımı sağlanacaktır.
+\item Görüntü, alıcının \texttt{702_Yazilim_Isleri/Alinan_Dosyalar/} klasörüne kaydedilecektir.
+Dosya, bilgisayardaki görüntüleyiciyle açılabilecektir.
+\item Proje bireysel yürütülmektedir; çekirdek haberleşme ve dosya işlemleri C++17 ile geliştirilmektedir. Terminal düzeni ve görsel önizleme için kullanılan 	exttt{tmux}/	exttt{chafa} yardımcı araçlardır. Grup sohbeti, hesaplar, mesaj geçmişi ve grafik arayüz kapsam dışıdır.
+\end{itemize}
+
+\section{Kuramsal Temel}
+
+Ağ iletişimi, görevleri farklı katmanlara ayırır \cite{tanenbaum}.
+TCP, uygulamalara güvenilir ve sıralı bir bayt akışı sunar;
+ancak metnin nerede bittiğini veya hangi baytların bir resme
+ait olduğunu kendiliğinden belirlemez \cite{rfc9293}.
+Bu sınırlar uygulamanın üst bilgisiyle tanımlanacaktır.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node[font=\small\bfseries] at (0,0.95) {Gönderici};
+\node[font=\small\bfseries] at (8.8,0.95) {Alıcı};
+\node[kutu,text width=4cm] (a) at (0,0)
+  {C++ uygulaması\\İçeriği baytlara çevir};
+\node[sonuc,text width=4cm] (b) at (8.8,0)
+  {C++ uygulaması\\Göster veya kaydet};
+\node[kutu,text width=4cm] (c) at (0,-1.6)
+  {Linux TCP katmanı\\Bayt akışını gönder};
+\node[kutu,text width=4cm] (d) at (8.8,-1.6)
+  {Linux TCP katmanı\\Bayt akışını al};
+\node[kutu,text width=4cm] (e) at (0,-3.2)
+  {IP / Yerel geri döngü};
+\node[kutu,text width=4cm] (f) at (8.8,-3.2)
+  {IP / Yerel geri döngü};
+\draw[ok] (a) -- (c);
+\draw[ok] (c) -- (e);
+\draw[ok] (e) -- node[above,font=\small]{127.0.0.1} (f);
+\draw[ok] (f) -- (d);
+\draw[ok] (d) -- (b);
+\end{tikzpicture}
+\caption{Bir iletinin uygulamadan alıcıya izlediği kavramsal yol.}
+\label{fig:katman}
+\end{figure}
+
+Yerel denemelerde internet veya ikinci bilgisayar gerekmeyecektir.
+Linux soket arayüzü kullanılacaktır. Cerf ve Kahn'ın çalışması,
+ortak iletişim kurallarının tarihsel temeli açısından
+incelenecektir \cite{cerf}.
+
+\section{Yöntem}
+
+Önce sunucu, deneme için seçilen 5000 numaralı TCP portunda
+bağlantı bekleyecektir. İstemci \texttt{127.0.0.1:5000}
+adresine bağlanacaktır. Bağlantı kurulduğunda her iki taraf
+gönderici veya alıcı olabilir; arada üçüncü bir sunucu yoktur.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+\node[kutu] (i) at (0,0) {İstemci};
+\node[kutu] (s) at (10,0) {Sunucu};
+\draw[dashed,draw=lacivert] (i.south) -- (0,-5.2);
+\draw[dashed,draw=lacivert] (s.south) -- (10,-5.2);
+
+\draw[ok] (0,-1.1) --
+  node[above]{SYN: bağlantı isteği} (10,-1.1);
+\draw[ok] (10,-1.9) --
+  node[above]{SYN + ACK: isteğe yanıt} (0,-1.9);
+\draw[ok] (0,-2.7) --
+  node[above]{ACK: bağlantının onayı} (10,-2.7);
+
+\draw[dotted,draw=lacivert] (-0.3,-3.15) -- (10.3,-3.15);
+
+\draw[ok] (0,-3.9) --
+  node[above]{11 B üst bilgi + metin: Merhaba} (10,-3.9);
+\draw[ok] (10,-4.8) --
+  node[above]{11 B üst bilgi + ad + görüntü baytları} (0,-4.8);
+\end{tikzpicture}
+\caption{TCP bağlantısının kuruluşunu ve çift yönlü aktarımı gösteren UML sıra diyagramı.}
+\label{fig:sira}
+\end{figure}
+
+İlk üç adımı işletim sisteminin TCP katmanı yürütür
+\cite{rfc9293}. Bağlantı birden fazla ileti için açık tutulacaktır.
+TCP onayı, görüntünün dosyaya kaydedildiği anlamına gelmez;
+kaydetme ayrıca alıcı uygulamanın sorumluluğundadır.
+
+\subsection{Uygulama İletisinin Yapısı}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node[alan,text width=1.15cm] (t) {Tür\\1 B};
+\node[alan,text width=1.75cm,right=0pt of t] (u)
+  {Ad uzunluğu\\2 B};
+\node[alan,text width=1.7cm,right=0pt of u] (b)
+  {Veri boyutu\\4 B};
+\node[alan,text width=1.65cm,right=0pt of b] (c)
+  {CRC32\\4 B};
+\node[alan,text width=2.0cm,right=0pt of c] (a)
+  {Dosya adı\\$N$ B};
+\node[alan,text width=2.7cm,fill=acikyesil,right=0pt of a] (v)
+  {Metin / görüntü\\$D$ B};
+\end{tikzpicture}
+\caption{Uygulamaya ait ileti düzeni; bu yapı TCP başlığı değildir.}
+\label{fig:ileti}
+\end{figure}
+
+Tür alanında 1 metni, 2 görüntüyü gösterir. Metinde ad uzunluğu sıfırdır; görüntüde yalnız dosya adı iletilir. Sayısal alanlar ağ bayt sırasındadır. CRC32 alanı içerik bütünlüğünü denetler. Alıcı önce 11 baytlık sabit üst bilgiyi, sonra $N$ baytlık adı ve $D$ baytlık içeriği okur. Tek 	exttt{send}/	exttt{recv} çağrısının tüm veriyi tamamladığı varsayılmaz.
+
+\section{Kullanım ve Alıcı İşlem Akışı}
+
+Kullanıcı, terminalden metin yazacak veya göndereceği
+görüntünün dosya yolunu belirtecektir. Gönderici uygulama
+üst bilgiyi hazırlayıp içeriği aktaracaktır. Karşılıklı
+mesajlaşmada, klavye girişini beklemek gelen veriyi
+engellemesin diye alma işlemi ayrı bir C++ iş parçacığında
+yürütülecektir.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node[kutu] (h) at (0,0) {Sabit üst bilgiyi al};
+\node[kutu] (k) at (0,-1.4) {Tür ve boyut\\kontrolü};
+\node[kutu] (a) at (0,-2.8) {Adı ve içeriği\\eksiksiz al};
+\node[karar] (t) at (0,-4.3) {Veri türü?};
+\node[sonuc] (m) at (-3.5,-5.85) {Metin\\Terminalde göster};
+\node[sonuc] (g) at (3.5,-5.85)
+  {Görüntüyü kaydet\\alınanlar/ klasörü};
+\node[kutu] (y) at (0,-7.4) {Sonraki iletiyi bekle};
+\node[kutu,fill=acikturuncu,text width=2.4cm] (e)
+  at (5.15,-1.4) {Hata bildir\\Aktarımı durdur};
+
+\draw[ok] (h) -- (k);
+\draw[ok] (k) -- (a);
+\draw[ok] (a) -- (t);
+\draw[ok] (k) -- node[above,font=\small]{Geçersiz} (e);
+\draw[ok] (a.east) -|
+  node[pos=0.35,below,font=\small]{Bağlantı kesildi} (e.south);
+\draw[ok] (t) -| node[pos=0.75,left,font=\small]{1} (m);
+\draw[ok] (t) -| node[pos=0.75,right,font=\small]{2} (g);
+\draw[ok] (m.south) |- (y.west);
+\draw[ok] (g.south) |- (y.east);
+\draw[ok] (y.south) -- (0,-8.2) -- (-6,-8.2)
+  -- (-6,0) -- (h.west);
+\end{tikzpicture}
+\caption{Alıcının metin ile görüntüyü ayırmasını gösteren UML etkinlik ve akış diyagramı.}
+\label{fig:akis}
+\end{figure}
+
+\textbf{Metin örneği:} A kullanıcısının yazdığı \emph{Merhaba}
+iletisi, B kullanıcısının terminalinde görüntülenecektir.
+\textbf{Görüntü örneği:} B'nin seçtiği \texttt{ornek.png},
+A'nın alım klasörüne kaydedilecektir. Kaynak bilgisayardaki
+tam dosya yolu alıcıya gönderilmeyecektir.
+
+\textbf{Hata ve çıkış:} Olmayan dosya için aktarım başlatılmayacak;
+üst bilgideki boyutlar belirlenen sınırlarla denetlenecektir.
+Alımda klasör dışına yazmaya ve mevcut dosyanın üzerine yazmaya
+izin verilmeyecektir. Eksik aktarım tamamlanmış sayılmayacak;
+çıkışta soket ve alım iş parçacığı düzenli kapatılacaktır.
+
+\section{Doğrulama Planı ve Beklenen Sonuçlar}
+
+Temel geliştirme testleri başlatılmıştır. Aşağıdaki kontroller iki yönde uygulanacak; sonuçlar final raporuna kaydedilecektir.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Planlanan deneyler ve başarı ölçütleri.}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\linewidth}{@{}p{3.6cm}X@{}}
+\toprule
+\textbf{Deney} & \textbf{Başarı ölçütü} \\
+\midrule
+Metin aktarımı &
+Kısa, uzun ve Türkçe karakterli metinler eksiksiz iletilir. \\
+Görüntü aktarımı &
+Farklı boyutlardaki JPG/PNG dosyaları açılır; CRC32 ve kaynak dosyayla eşleşme doğrulanır. \\
+Ardışık iletiler &
+Ardışık metin ve görüntüler birbirine karışmaz. \\
+Hatalı giriş / kesinti &
+Geçersiz yol ve bağlantı kesintisi bildirilir; eksik dosya başarılı sayılmaz. \\
+Çıkış &
+Soketler ve alım iş parçacığı takılmadan kapatılır. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Önerilen Çalışma Planı}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  adim/.style={kutu,text width=3.45cm,minimum height=0.85cm}]
+\node[adim] (a) at (0,0) {1. hafta\\Bağlantı kurulumu};
+\node[adim] (b) at (5,0) {2. hafta\\Metin aktarımı};
+\node[adim] (c) at (10,0) {3. hafta\\Görüntü aktarımı};
+\node[adim] (d) at (10,-1.5) {4. hafta\\Hata kontrolleri};
+\node[adim] (e) at (5,-1.5) {5. hafta\\Deney ve rapor};
+\node[adim] (f) at (0,-1.5) {6. hafta\\10 dakikalık sunum};
+
+\draw[ok] (a) -- (b);
+\draw[ok] (b) -- (c);
+\draw[ok] (c) -- (d);
+\draw[ok] (d) -- (e);
+\draw[ok] (e) -- (f);
+\end{tikzpicture}
+\caption{Proje kabulü sonrasında önerilen altı haftalık çalışma planı.}
+\end{figure}
+
+\section{Değerlendirme ve Öneriler}
+
+Beklenen çıktı, metin ve görüntü aktarabilen iki C++17 programıdır. Çalışma yerel WSL2 ortamıyla sınırlıdır; CRC32 bütünlük kontrolü sağlar ancak şifreleme ve kimlik doğrulama kapsam dışıdır.
+
+\begingroup
+\small
+\setlength{\parskip}{0pt}
+\begin{thebibliography}{9}
+\setlength{\itemsep}{2pt}
+
+\bibitem{tanenbaum}
+A. S. Tanenbaum ve D. J. Wetherall,
+\textit{Computer Networks} [Bilgisayar Ağları],
+5. baskı, Pearson Prentice Hall, 2011.
+
+\bibitem{rfc9293}
+W. Eddy (ed.), \textit{Transmission Control Protocol (TCP)}
+[İletim Kontrol Protokolü], RFC 9293, Ağustos 2022.
+\url{https://www.rfc-editor.org/rfc/rfc9293}
+
+\bibitem{cerf}
+V. G. Cerf ve R. E. Kahn,
+\textit{A Protocol for Packet Network Intercommunication}
+[Paket Ağları Arasında İletişim İçin Bir Protokol],
+\textit{IEEE Transactions on Communications},
+cilt 22, sayı 5, ss. 637--648, 1974.
+
+\end{thebibliography}
+\endgroup
+
+\end{document}

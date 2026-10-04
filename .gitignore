@@ -1,11 +1,18 @@
-# Derleme ciktilari
-/client
-/server
+# Derlenmis uygulama dosyalari
+/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/Derlenmis_Uygulama_Dosyalari/
+
+# Uygulama ciktilari
+/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar/*
+!/702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar/.gitkeep
+
+# Derleme ve gecici dosyalar
 *.o
 *.gch
-
-# Alinan dosyalar ve yerel test ciktilari
-/alinanlar/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
 
 # Editor ve sistem dosyalari
 .vscode/
