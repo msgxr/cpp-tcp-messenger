@@ -44,34 +44,35 @@ Uygulama klasik istemci-sunucu mimarisini kullanır.
           └── Alıcı iş parçacığı                                  └── Alıcı iş parçacığı
 ```
 
-Sunucu `5000/TCP` portunu dinler. İstemci varsayılan olarak `127.0.0.1:5000` adresine bağlanır. Bağlantı kurulduktan sonra her iki taraf da gönderici ve alıcı olarak çalışabilir.
+Sunucu `5000/TCP` portunu dinler ve aynı anda en fazla beş istemciyi kabul eder. Her istemciye benzersiz bir bağlantı kimliği atanır. İstemci aktif kimlikleri listeleyip bir hedef seçtikten sonra metin veya görüntüyü yalnız seçilen istemciye gönderir.
 
 ---
 
 ## 3. Uygulama Protokolü
 
-TCP mesaj sınırlarını kendiliğinden belirlemez; yalnızca sıralı bir bayt akışı sağlar. Bu nedenle proje, her mesajın başına **11 baytlık sabit bir uygulama üst bilgisi** ekler.
+TCP mesaj sınırlarını kendiliğinden belirlemez; yalnızca sıralı bir bayt akışı sağlar. Bu nedenle proje, her mesajın başına **13 baytlık sabit bir uygulama üst bilgisi** ekler.
 
 | Alan | Boyut | Açıklama |
 |---|---:|---|
-| `type` | 1 bayt | `1`: metin, `2`: görüntü |
+| `type` | 1 bayt | Liste, metin, görüntü, kimlik, liste yanıtı veya hata türü |
+| `client_id` | 2 bayt | İstemciden sunucuya hedef, sunucudan alıcıya kaynak kimliği |
 | `filename_len` | 2 bayt | Dosya adı uzunluğu; metinde `0` |
 | `data_size` | 4 bayt | Gönderilen içeriğin bayt cinsinden boyutu |
 | `checksum` | 4 bayt | İçeriğin CRC32 doğrulama değeri |
-| **Toplam** | **11 bayt** | Sabit uygulama başlığı |
+| **Toplam** | **13 bayt** | Sabit uygulama başlığı |
 
 Sayısal alanlar ağ bayt sırasına dönüştürülür. Bunun için `htons()`, `htonl()`, `ntohs()` ve `ntohl()` fonksiyonları kullanılır.
 
 Metin mesajının yapısı:
 
 ```text
-[ 11 bayt başlık ][ metin verisi ]
+[ 13 bayt başlık ][ metin verisi ]
 ```
 
 Görüntü mesajının yapısı:
 
 ```text
-[ 11 bayt başlık ][ dosya adı ][ görüntü verisi ]
+[ 13 bayt başlık ][ dosya adı ][ görüntü verisi ]
 ```
 
 ---
@@ -151,7 +152,7 @@ cpp-tcp-messenger/
 |---|---|
 | `client.cpp` | TCP istemcisini oluşturur, sunucuya bağlanır ve kullanıcı girişlerini işler. |
 | `server.cpp` | TCP sunucusunu oluşturur, `5000` portunu dinler ve istemci bağlantısını kabul eder. |
-| `protocol.h` | Mesaj türlerini, 11 baytlık başlığı, boyut sınırlarını ve protokol fonksiyon bildirimlerini tanımlar. |
+| `protocol.h` | Mesaj türlerini, 13 baytlık başlığı, boyut sınırlarını ve protokol fonksiyon bildirimlerini tanımlar. |
 | `protocol.cpp` | `send_exact()`, `read_exact()` ve CRC32 işlemlerinin uygulamasını içerir. |
 | `chat_common.h` | Metin/görüntü gönderme ve alma, dosya doğrulama, güvenli kayıt ve ortak haberleşme mantığını içerir. |
 | `ui.h` | Terminal renkleri, bilgi kartları, ilerleme çubuğu, yardım ekranı ve `chafa` önizlemesini yönetir. |
@@ -284,6 +285,8 @@ Desteklenen komutlar:
 
 | Komut | İşlev |
 |---|---|
+| `!liste` | Mesaj gönderilebilecek aktif istemci kimliklerini getirir. |
+| `!hedef <kimlik>` | Metin ve görüntülerin gönderileceği istemciyi seçer. |
 | `!resim <dosya_adı veya dosya_yolu>` | JPG/JPEG/PNG görüntü gönderir. Yalın adlar test klasöründe aranır. |
 | `!durum` | Aktif bağlantı durumunu gösterir. |
 | `!temizle` | Terminal ekranını temizler. |
@@ -305,11 +308,11 @@ Dosya boyutu kontrolü
 ↓
 CRC32 hesaplama
 ↓
-11 baytlık başlığın hazırlanması
+13 baytlık başlığın hazırlanması
 ↓
 Dosya adının gönderilmesi
 ↓
-8192 baytlık parçalar hâlinde görüntü aktarımı
+Görüntü içeriğinin tam gönderilmesi
 ↓
 Alıcıda yeniden CRC32 hesaplama
 ↓
@@ -333,9 +336,9 @@ Gelen dosyalar aşağıdaki klasöre kaydedilir:
 
 Uygulamada aşağıdaki koruyucu kontroller bulunmaktadır:
 
-- Metin boyutu en fazla **1 MB**
-- Görüntü boyutu en fazla **50 MB**
-- Yalnız JPG/JPEG/PNG uzantılarının kabul edilmesi
+- Metin boyutu en fazla **64 KiB**
+- Görüntü boyutu en fazla **10 MiB**
+- JPG/JPEG/PNG uzantısı ile dosya imzasının birlikte doğrulanması
 - Gelen dosya adının `safe_filename()` ile temizlenmesi
 - Dizin dışına yazmaya yönelik dosya yollarının engellenmesi
 - Aynı isimli mevcut dosyanın üzerine yazılmaması
@@ -348,7 +351,7 @@ Uygulamada aşağıdaki koruyucu kontroller bulunmaktadır:
 
 ## 15. Eşzamanlılık Tasarımı
 
-Her iki uygulamada da gelen verilerin kullanıcı girişinden bağımsız olarak alınabilmesi için ayrı bir alıcı iş parçacığı oluşturulur:
+Sunucu her istemciyi ayrı bir iş parçacığında yönetir. Aynı hedefe yönlendirilen çerçevelerin karışmaması için her istemcinin gönderim mutex'i bulunur. İstemcide gelen verilerin kullanıcı girişinden bağımsız alınabilmesi için ayrı bir alıcı iş parçacığı oluşturulur:
 
 ```cpp
 std::thread receiver(receive_loop, socket_fd);
@@ -364,15 +367,13 @@ Terminal çıktılarının farklı iş parçacıkları tarafından aynı anda bo
 
 **Neden TCP?** Metin ve dosya aktarımında sıralı, güvenilir ve bağlantı tabanlı veri iletimi gerektiği için TCP tercih edilmiştir.
 
-**Neden 11 baytlık özel başlık?** TCP mesaj sınırlarını bilmediğinden alıcının mesaj türünü, dosya adı uzunluğunu, veri boyutunu ve CRC32 değerini önceden bilmesi gerekir.
+**Neden 13 baytlık özel başlık?** TCP mesaj sınırlarını bilmediğinden alıcının mesaj türünü, hedef/kaynak kimliğini, dosya adı uzunluğunu, veri boyutunu ve CRC32 değerini önceden bilmesi gerekir.
 
 **Neden `send_exact()` ve `read_exact()`?** Soket API'sinde tek bir `send()` veya `recv()` çağrısı istenen tüm veriyi işlemeyebilir. Yardımcı fonksiyonlar, aktarım tamamlanana kadar işlemi sürdürür.
 
 **Neden ağ bayt sırası?** Çok baytlı sayısal alanların farklı sistem mimarilerinde aynı biçimde yorumlanmasını sağlar.
 
 **Neden CRC32?** Aktarılan verinin gönderici ve alıcı tarafında aynı olup olmadığını kontrol etmek için kullanılır.
-
-**Neden 8192 baytlık tampon?** Büyük görüntü dosyalarının tamamını tek seferde belleğe almak yerine parçalı ve kontrollü aktarım yapılmasını sağlar.
 
 **Neden ayrı alıcı iş parçacığı?** Kullanıcı klavye girişi beklerken gelen mesajların bloklanmaması için kullanılır.
 
@@ -407,7 +408,8 @@ Bu sürüm eğitim ve yerel ağ haberleşmesi senaryosu için hazırlanmıştır
 
 ```text
 1 sunucu
-1 istemci
+En fazla 5 eşzamanlı istemci
+Aktif istemci listesi ve özel hedef seçimi
 TCP / IPv4
 Metin mesajı
 JPG / JPEG / PNG görüntü aktarımı
@@ -418,7 +420,6 @@ Yerel çalışma ortamı
 Aşağıdaki özellikler mevcut sürümün kapsamı dışındadır:
 
 ```text
-Çoklu istemci yönetimi
 Kullanıcı hesabı ve oturum sistemi
 Veritabanı
 Kalıcı mesaj geçmişi
@@ -463,7 +464,7 @@ Bu depo akademik ders projesi kapsamında hazırlanmıştır. Kodun yeniden kull
 <!-- TCP_HAZIRLIK_BEGIN -->
 ## Otomatik doğrulama ve gösterim
 
-Temiz derleme, 36 kontrol, iki yönlü PNG/JPG aktarımı, renkli piksel önizlemesi ve VS Code görevleri hazırdır. Güncel başlangıç adımları [Çalıştırma Kılavuzu](CALISTIRMA_KILAVUZU.md), ayrıntılı test kapsamı [Test Kapsamı](702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/TEST_KAPSAMI.md) dosyasındadır. GitHub Actions her gönderimde aynı doğrulamayı çalıştırır.
+Temiz derleme, 13 baytlık protokol birim testleri, beş istemcili gerçek TCP yönlendirme testi, görüntü önizlemesi ve VS Code görevleri hazırdır. Güncel başlangıç adımları [Çalıştırma Kılavuzu](CALISTIRMA_KILAVUZU.md), ayrıntılı test kapsamı [Test Kapsamı](702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/03_Test_ve_Dogrulama_Calismalari/TEST_KAPSAMI.md) dosyasındadır. GitHub Actions her gönderimde aynı doğrulamayı çalıştırır.
 
 WSL/Linux terminalinde proje kökünden:
 

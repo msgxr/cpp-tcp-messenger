@@ -38,7 +38,8 @@ int main() {
     }
 
     ui::status("Sunucuya bağlandı.");
-    ui::info("Protokol: TCP + 11 bayt üst bilgi + CRC32 bütünlük kontrolü");
+    set_socket_timeout(sock_fd);
+    ui::info("Protokol: TCP + 13 bayt üst bilgi + kimlik/hedef + CRC32");
 
     run_console(sock_fd, "İSTEMCİ", "127.0.0.1:5000");
     close(sock_fd);

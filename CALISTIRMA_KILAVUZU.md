@@ -8,7 +8,7 @@ Ubuntu-20.04 yüklü olmalıdır. Proje klasöründe PowerShell açın:
 powershell -NoProfile -ExecutionPolicy Bypass -File "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/calistir.ps1"
 ```
 
-Başlatıcı proje yolunu kendi konumundan bulur. Gerekli `g++`, `make`, `python3`, `tmux`, `chafa` ve `iproute2` araçlarını kurar, derler ve iki terminal bölmesi açar. Paket kurulumu internet ve sudo yetkisi gerektirir.
+Başlatıcı proje yolunu kendi konumundan bulur. Gerekli `g++`, `make`, `tmux`, `chafa` ve `iproute2` araçlarını kurar, derler; bir sunucu ve iki istemci için üç terminal bölmesi açar. Paket kurulumu internet ve sudo yetkisi gerektirir.
 
 ## Linux / WSL terminali
 
@@ -21,11 +21,18 @@ bash "$b/dogrula.sh"
 bash "$b/calistir.sh"
 ```
 
-Doğrulama 36 kontrol içerir. Mevcut gösterimi `cikis` ile kapatın; sonra `dogrula.sh` çalıştırın. GitHub Actions aynı doğrulamayı her push ve pull request için çalıştırır.
+Doğrulama, 13 baytlık protokol birim testlerini ve gerçek TCP üzerinde beş istemcili yönlendirme testini içerir. Mevcut gösterimi `cikis` ile kapatın; sonra `dogrula.sh` çalıştırın. GitHub Actions aynı doğrulamayı her push ve pull request için çalıştırır.
 
 ## Gösterim
 
-Solda sunucu, sağda istemci bulunur. Sağ bölmede `SELAM`, solda `MERHABA` yazın. Görsel göndermek için iki tarafta da:
+Sunucu ve iki istemci ayrı bölmelerde açılır. Her istemci önce kendisine atanan kimliği gösterir. İstemcide hedef seçmek için:
+
+```text
+!liste
+!hedef <diğer istemcinin kimliği>
+```
+
+Ardından normal metin yazabilir veya görüntü gönderebilirsiniz:
 
 ```text
 !resim piksel_test.png
@@ -42,7 +49,7 @@ Artık Windows Gezgini'nden görseli terminale sürükleyip yalnızca Enter'a ba
 `!resim` yazmak zorunlu değildir. JPG/JPEG/PNG dosyası otomatik olarak ikili görsel
 paketi olarak gönderilir, karşı tarafta `chafa` ile piksel blokları gösterilir.
 
-`!yardim`, `!durum`, `!temizle` ve `cikis` komutları her iki tarafta çalışır. Aynı adlı dosyalar ayrı adlarla kaydedilir. Bağlantı koptuğunda uygulama otomatik kapanır. Alınan dosyalar `04_Uygulama_Ciktilari/Alinan_Dosyalar` altındadır.
+`!liste`, `!hedef`, `!yardim`, `!durum`, `!temizle` ve `cikis` komutları istemcilerde çalışır. Aynı adlı dosyalar ayrı adlarla kaydedilir. Bağlantı koptuğunda istemci otomatik kapanır. Alınan dosyalar `04_Uygulama_Ciktilari/Alinan_Dosyalar` altındadır.
 
 ## VS Code
 

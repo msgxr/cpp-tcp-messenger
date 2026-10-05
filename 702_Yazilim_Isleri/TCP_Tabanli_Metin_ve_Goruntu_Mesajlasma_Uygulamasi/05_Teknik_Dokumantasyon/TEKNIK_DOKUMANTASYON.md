@@ -36,7 +36,7 @@ Eğer Linux terminaline hiç girmeden doğrudan Windows PowerShell üzerinden pr
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/calistir.ps1"
    ```
-   * **Arka Planda Ne Oluyor?** Bu betik, yukarıda açıklanan `wsl.exe` köprüsünü kurarak Ubuntu-20.04 ortamına bağlanır. Eksik olan `g++`, `make`, `python3`, `tmux`, `chafa` ve `iproute2` paketlerini `apt` aracılığıyla otomatik kurar. Kaynak kodları derler ve terminali ikiye bölerek demoyu başlatır.
+   * **Arka Planda Ne Oluyor?** Bu betik, yukarıda açıklanan `wsl.exe` köprüsünü kurarak Ubuntu-20.04 ortamına bağlanır. Eksik olan `g++`, `make`, `tmux`, `chafa` ve `iproute2` paketlerini `apt` aracılığıyla otomatik kurar. Kaynak kodları derler ve sunucu ile iki istemci için terminal bölmelerini açar.
 
 ### Yöntem B: Doğrudan Linux / WSL Terminali İçinden (Manuel/Kontrollü Yöntem)
 Eğer zaten Ubuntu/WSL terminalinin içerisine girdiyseniz ve adımları tek tek görerek çalıştırmak istiyorsanız bu yöntemi izleyin.

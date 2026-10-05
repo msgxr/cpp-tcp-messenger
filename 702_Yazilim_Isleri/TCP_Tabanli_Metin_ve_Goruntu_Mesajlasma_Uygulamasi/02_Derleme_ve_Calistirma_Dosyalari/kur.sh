@@ -8,7 +8,7 @@ export LC_ALL=C.UTF-8
 export COLORTERM=truecolor
 
 missing=0
-for tool in g++ make python3 tmux chafa ss timeout; do
+for tool in g++ make tmux chafa ss timeout; do
     command -v "$tool" >/dev/null 2>&1 || missing=1
 done
 if [ "$missing" -eq 1 ]; then
@@ -16,9 +16,9 @@ if [ "$missing" -eq 1 ]; then
     admin=()
     if [ "$(id -u)" -ne 0 ]; then admin=(sudo); fi
     "${admin[@]}" apt-get update
-    "${admin[@]}" apt-get install -y build-essential python3 tmux chafa iproute2 coreutils
+    "${admin[@]}" apt-get install -y build-essential tmux chafa iproute2 coreutils
 fi
-for tool in g++ make python3 tmux chafa ss timeout; do
+for tool in g++ make tmux chafa ss timeout; do
     command -v "$tool" >/dev/null 2>&1 || { echo "[X] Eksik araç: $tool" >&2; exit 1; }
 done
 echo "[✓] Gerekli araçlar hazır."

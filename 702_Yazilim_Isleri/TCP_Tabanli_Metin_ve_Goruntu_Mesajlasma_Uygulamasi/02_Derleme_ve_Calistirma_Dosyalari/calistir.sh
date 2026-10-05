@@ -25,13 +25,14 @@ if ss -H -ltn 'sport = :5000' | grep -q .; then
 fi
 server_pane=$("${tmux_cmd[@]}" new-session -d -s "$session" -n mesajlasma -c "$PROJECT_ROOT" -P -F '#{pane_id}' bash "$SCRIPT_DIR/sunucu.sh")
 client_pane=$("${tmux_cmd[@]}" split-window -h -t "$server_pane" -c "$PROJECT_ROOT" -P -F '#{pane_id}' bash "$SCRIPT_DIR/istemci.sh")
-"${tmux_cmd[@]}" select-layout -t "$server_pane" even-horizontal >/dev/null
+"${tmux_cmd[@]}" split-window -v -t "$client_pane" -c "$PROJECT_ROOT" bash "$SCRIPT_DIR/istemci.sh"
+"${tmux_cmd[@]}" select-layout -t "$server_pane" tiled >/dev/null
 "${tmux_cmd[@]}" set-option -t "$session" mouse on
 "${tmux_cmd[@]}" set-option -t "$session" status-style 'bg=default,fg=cyan'
 "${tmux_cmd[@]}" set-option -t "$session" status-left '[ TCP MESSENGER ] '
 "${tmux_cmd[@]}" select-pane -t "$client_pane"
 if [ "${1:-}" = '--ayrik' ]; then
-    echo "[✓] Sunucu ve istemci başlatıldı: $session"
+    echo "[✓] Sunucu ve iki istemci başlatıldı: $session"
 else
     "${tmux_cmd[@]}" attach-session -t "$session"
 fi

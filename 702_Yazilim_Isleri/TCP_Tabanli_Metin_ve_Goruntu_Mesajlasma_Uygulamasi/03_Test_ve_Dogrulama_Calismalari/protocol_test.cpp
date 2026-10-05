@@ -8,14 +8,14 @@
 #include <unistd.h>
 
 int main() {
-    static_assert(sizeof(MessageHeader) == 11);
+    static_assert(sizeof(MessageHeader) == 13);
     assert(crc32_bytes("", 0) == 0);
     assert(crc32_bytes("123456789", 9) == 0xcbf43926u);
     auto crc = crc32_update(crc32_begin(), reinterpret_cast<const unsigned char*>("1234"), 4);
     crc = crc32_update(crc, reinterpret_cast<const unsigned char*>("56789"), 5);
     assert(crc32_end(crc) == 0xcbf43926u);
-    MessageHeader h{MSG_IMAGE, htons(3), htonl(0x01020304), htonl(0xcbf43926)};
-    const unsigned char expected[]{2, 0, 3, 1, 2, 3, 4, 0xcb, 0xf4, 0x39, 0x26};
+    MessageHeader h{MSG_IMAGE, htons(7), htons(3), htonl(0x01020304), htonl(0xcbf43926)};
+    const unsigned char expected[]{3, 0, 7, 0, 3, 1, 2, 3, 4, 0xcb, 0xf4, 0x39, 0x26};
     assert(std::memcmp(&h, expected, sizeof(h)) == 0);
     int sockets[2];
     assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);

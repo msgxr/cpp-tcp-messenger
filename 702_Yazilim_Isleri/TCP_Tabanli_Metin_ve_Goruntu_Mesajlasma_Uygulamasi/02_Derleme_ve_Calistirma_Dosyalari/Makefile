@@ -30,7 +30,7 @@ clean:
 	rm -rf $(BIN_DIR)
 
 test: all
-	cd "../../.." && python3 "$(CURDIR)/../03_Test_ve_Dogrulama_Calismalari/dogrula.py"
+	bash "$(CURDIR)/dogrula.sh"
 
 demo: all
 	bash "$(CURDIR)/calistir.sh"

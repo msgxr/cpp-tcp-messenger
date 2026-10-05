@@ -132,7 +132,7 @@ inline void banner(const std::string& role, const std::string& endpoint) {
     boxed_line("Uç Nokta : " + endpoint, width);
     border("╚", "═", "╝", width);
     std::cout << RESET << DIM
-              << "Komutlar  !yardim  !durum  !temizle  !resim  cikis\n"
+              << "Komutlar  !liste  !hedef  !resim  !yardim  cikis\n"
               << "          Görseli sürükle → Enter\n"
               << RESET << "────────────────────────────────────────\n" << std::flush;
 }
@@ -230,6 +230,8 @@ inline void help() {
     std::lock_guard<std::mutex> lock(out_mutex);
     std::cout << YELLOW << BOLD << "\nKOMUTLAR\n" << RESET
               << "  normal metin          Karşı tarafa metin gönderir\n"
+              << "  !liste                Aktif hedef kimliklerini getirir\n"
+              << "  !hedef <kimlik>       Mesajların gönderileceği hedefi seçer\n"
               << "  !resim <dosya>        JPG/JPEG/PNG görsel gönderir\n"
               << "  dosya sürükle-bırak   Görseli komutsuz otomatik gönderir\n"
               << "  !durum                Bağlantı durumunu gösterir\n"

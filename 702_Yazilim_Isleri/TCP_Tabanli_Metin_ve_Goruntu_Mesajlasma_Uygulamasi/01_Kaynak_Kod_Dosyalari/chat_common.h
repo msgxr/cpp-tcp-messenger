@@ -1,272 +1,163 @@
 #ifndef CHAT_COMMON_H
 #define CHAT_COMMON_H
 
-#include <ctime>
-#include <cerrno>
+#include <algorithm>
+#include <arpa/inet.h>
+#include <cctype>
+#include <filesystem>
 #include <fcntl.h>
-#include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
-#include <filesystem>
-#include <algorithm>
-#include <cctype>
-#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 #include "protocol.h"
 #include "ui.h"
 
 namespace fs = std::filesystem;
 
-inline std::string lower_copy(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
-    return s;
+struct Frame {
+    uint8_t type = 0;
+    uint16_t client_id = 0;
+    std::string filename;
+    std::vector<unsigned char> data;
+};
+
+inline void set_socket_timeout(int sock, int seconds = 30) {
+    timeval timeout{seconds, 0};
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 }
 
-inline bool valid_image_extension(const std::string& filename) {
-    std::string ext = lower_copy(fs::path(filename).extension().string());
-    return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+inline void set_receive_timeout(int sock, int seconds) {
+    timeval timeout{seconds, 0};
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 }
 
-inline std::string safe_filename(const std::string& raw) {
-    std::string name = fs::path(raw).filename().string();
-    std::string out;
-    out.reserve(name.size());
-    for (unsigned char c : name) {
-        if (std::isalnum(c) || c == '.' || c == '_' || c == '-') out.push_back(static_cast<char>(c));
-        else out.push_back('_');
+inline bool valid_utf8(const std::vector<unsigned char>& data) {
+    for (size_t i = 0; i < data.size();) {
+        unsigned char c = data[i];
+        size_t n = c < 0x80 ? 1 : (c & 0xe0) == 0xc0 ? 2 :
+                   (c & 0xf0) == 0xe0 ? 3 : (c & 0xf8) == 0xf0 ? 4 : 0;
+        if (!n || i + n > data.size() || (n == 2 && c < 0xc2) || (n == 4 && c > 0xf4)) return false;
+        for (size_t j = 1; j < n; ++j) if ((data[i + j] & 0xc0) != 0x80) return false;
+        if ((n == 3 && c == 0xe0 && data[i + 1] < 0xa0) ||
+            (n == 3 && c == 0xed && data[i + 1] >= 0xa0) ||
+            (n == 4 && c == 0xf0 && data[i + 1] < 0x90) ||
+            (n == 4 && c == 0xf4 && data[i + 1] >= 0x90)) return false;
+        i += n;
     }
-    if (out.empty()) out = "gorsel.bin";
-    if (out.size() > 180) out.resize(180);
-    return out;
-}
-
-inline fs::path unique_save_path(const fs::path& dir, const std::string& filename) {
-    fs::path candidate = dir / filename;
-    if (!fs::exists(candidate)) return candidate;
-    fs::path stem = candidate.stem();
-    fs::path ext = candidate.extension();
-    for (int i = 1; i < 10000; ++i) {
-        fs::path p = dir / (stem.string() + "_" + std::to_string(i) + ext.string());
-        if (!fs::exists(p)) return p;
-    }
-    return dir / ("alinan_" + std::to_string(::time(nullptr)) + ext.string());
-}
-
-inline bool file_crc32(const std::string& filepath, uint32_t& result) {
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file) return false;
-    std::vector<unsigned char> buffer(8192);
-    uint32_t crc = crc32_begin();
-    while (file) {
-        file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-        std::streamsize n = file.gcount();
-        if (n > 0) crc = crc32_update(crc, buffer.data(), static_cast<size_t>(n));
-    }
-    if (file.bad()) return false;
-    result = crc32_end(crc);
     return true;
 }
 
-inline bool send_text_message(int sock, const std::string& text) {
-    if (text.size() > MAX_TEXT_SIZE) {
-        ui::error("Metin 1 MB'dan büyük olamaz.");
-        return false;
-    }
+inline uint32_t frame_crc(const std::string& filename, const std::vector<unsigned char>& data) {
+    uint32_t crc = crc32_begin();
+    crc = crc32_update(crc, reinterpret_cast<const unsigned char*>(filename.data()), filename.size());
+    crc = crc32_update(crc, data.data(), data.size());
+    return crc32_end(crc);
+}
+
+inline bool send_frame(int sock, const Frame& frame) {
     MessageHeader header{};
-    header.type = MSG_TEXT;
-    header.filename_len = htons(0);
-    header.data_size = htonl(static_cast<uint32_t>(text.size()));
-    header.checksum = htonl(crc32_bytes(text.data(), text.size()));
+    header.type = frame.type;
+    header.client_id = htons(frame.client_id);
+    header.filename_len = htons(static_cast<uint16_t>(frame.filename.size()));
+    header.data_size = htonl(static_cast<uint32_t>(frame.data.size()));
+    header.checksum = htonl(frame.filename.empty() && frame.data.empty() ? 0u : frame_crc(frame.filename, frame.data));
     return send_exact(sock, &header, sizeof(header)) &&
-           (text.empty() || send_exact(sock, text.data(), text.size()));
+           (frame.filename.empty() || send_exact(sock, frame.filename.data(), frame.filename.size())) &&
+           (frame.data.empty() || send_exact(sock, frame.data.data(), frame.data.size()));
 }
 
-inline bool send_image_message(int sock, const std::string& filepath) {
-    if (!fs::exists(filepath) || !fs::is_regular_file(filepath)) {
-        ui::error("Dosya bulunamadı: " + filepath);
-        return false;
-    }
-    if (!valid_image_extension(filepath)) {
-        ui::error("Yalnızca JPG/JPEG/PNG gönderilebilir.");
-        return false;
-    }
-
-    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
-    if (!file) {
-        ui::error("Dosya açılamadı.");
-        return false;
-    }
-    std::streamsize sz = file.tellg();
-    if (sz <= 0 || static_cast<uint64_t>(sz) > MAX_IMAGE_SIZE) {
-        ui::error("Görsel boş olamaz ve 50 MB'dan büyük olamaz.");
-        return false;
-    }
-    uint32_t size = static_cast<uint32_t>(sz);
-    std::string filename = fs::path(filepath).filename().string();
-    if (filename.empty() || filename.size() > 255) {
-        ui::error("Dosya adı geçersiz veya çok uzun.");
-        return false;
-    }
-
-    uint32_t checksum = 0;
-    if (!file_crc32(filepath, checksum)) {
-        ui::error("CRC32 hesaplanamadı.");
-        return false;
-    }
-
+inline bool receive_frame(int sock, Frame& frame, std::string& error) {
     MessageHeader header{};
-    header.type = MSG_IMAGE;
-    header.filename_len = htons(static_cast<uint16_t>(filename.size()));
-    header.data_size = htonl(size);
-    header.checksum = htonl(checksum);
-
-    if (!send_exact(sock, &header, sizeof(header)) ||
-        !send_exact(sock, filename.data(), filename.size())) {
-        ui::error("Görsel üst bilgisi gönderilemedi.");
+    if (!read_exact(sock, &header, 1)) return false;
+    set_receive_timeout(sock, 30);
+    if (!read_exact(sock, reinterpret_cast<unsigned char*>(&header) + 1, sizeof(header) - 1)) {
+        set_receive_timeout(sock, 0);
+        error = "Başlık tamamlanmadan bağlantı kesildi veya zaman aşımı oluştu.";
         return false;
     }
-
-    file.clear();
-    file.seekg(0, std::ios::beg);
-    std::vector<char> buffer(8192);
-    uint32_t sent = 0;
-    int last_percent = -5;
-    while (sent < size) {
-        uint32_t want = std::min<uint32_t>(static_cast<uint32_t>(buffer.size()), size - sent);
-        file.read(buffer.data(), want);
-        std::streamsize n = file.gcount();
-        if (n <= 0 || !send_exact(sock, buffer.data(), static_cast<size_t>(n))) {
-            ui::error("Görsel aktarımı yarıda kesildi.");
-            return false;
-        }
-        sent += static_cast<uint32_t>(n);
-        int percent = size ? static_cast<int>((static_cast<uint64_t>(sent) * 100) / size) : 100;
-        if (percent >= last_percent + 5 || sent == size) {
-            ui::progress("Gönderiliyor", sent, size);
-            last_percent = percent;
-        }
+    frame.type = header.type;
+    frame.client_id = ntohs(header.client_id);
+    const uint16_t name_size = ntohs(header.filename_len);
+    const uint32_t data_size = ntohl(header.data_size);
+    const uint32_t expected_crc = ntohl(header.checksum);
+    if (name_size > MAX_FILENAME_SIZE || data_size > MAX_IMAGE_SIZE) {
+        set_receive_timeout(sock, 0);
+        error = "Başlıkta izin verilen boyut sınırı aşıldı.";
+        return false;
     }
-    ui::sent_card("Görsel: " + filename + "  •  " + std::to_string(size) +
-                  " bayt  •  CRC32 hazır");
+    frame.filename.assign(name_size, '\0');
+    frame.data.assign(data_size, 0);
+    if ((name_size && !read_exact(sock, frame.filename.data(), name_size)) ||
+        (data_size && !read_exact(sock, frame.data.data(), data_size))) {
+        set_receive_timeout(sock, 0);
+        error = "İleti tamamlanmadan bağlantı kesildi veya zaman aşımı oluştu.";
+        return false;
+    }
+    set_receive_timeout(sock, 0);
+    const uint32_t actual = name_size || data_size ? frame_crc(frame.filename, frame.data) : 0u;
+    if (actual != expected_crc) { error = "CRC32 doğrulaması başarısız."; return false; }
     return true;
 }
 
-inline bool receive_one(int sock) {
-    MessageHeader header{};
-    if (!read_exact(sock, &header, sizeof(header))) return false;
+inline bool valid_image_signature(const std::string& name, const std::vector<unsigned char>& data) {
+    std::string ext = fs::path(name).extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+    const bool jpeg = data.size() >= 3 && data[0] == 0xff && data[1] == 0xd8 && data[2] == 0xff;
+    const unsigned char png[]{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+    const bool is_png = data.size() >= 8 && std::equal(std::begin(png), std::end(png), data.begin());
+    return ((ext == ".jpg" || ext == ".jpeg") && jpeg) || (ext == ".png" && is_png);
+}
 
-    uint16_t filename_len = ntohs(header.filename_len);
-    uint32_t data_size = ntohl(header.data_size);
-    uint32_t expected_crc = ntohl(header.checksum);
+inline bool safe_wire_filename(const std::string& name) {
+    return !name.empty() && name.size() <= MAX_FILENAME_SIZE &&
+           name == fs::path(name).filename().string() && name != "." && name != ".." &&
+           name.find('/') == std::string::npos && name.find('\\') == std::string::npos;
+}
 
-    if (header.type != MSG_TEXT && header.type != MSG_IMAGE) {
-        ui::error("Geçersiz mesaj türü alındı.");
-        return false;
-    }
+inline std::string sanitized_filename(const std::string& name) {
+    std::string result;
+    for (unsigned char c : fs::path(name).filename().string())
+        result += std::isalnum(c) || c == '.' || c == '_' || c == '-' ? static_cast<char>(c) : '_';
+    if (result.empty()) result = "gorsel.bin";
+    if (result.size() > 180) result.resize(180);
+    return result;
+}
 
-    if (header.type == MSG_TEXT) {
-        if (filename_len != 0 || data_size > MAX_TEXT_SIZE) {
-            ui::error("Geçersiz metin paketi.");
-            return false;
-        }
-        std::vector<char> data(data_size);
-        if (data_size && !read_exact(sock, data.data(), data_size)) return false;
-        uint32_t actual = crc32_bytes(data.data(), data.size());
-        if (actual != expected_crc) {
-            ui::error("Metin CRC32 kontrolü başarısız; veri gösterilmedi.");
-            return true;
-        }
-        ui::message_box(std::string(data.begin(), data.end()));
-        ui::status("Metin bütünlüğü CRC32 ile doğrulandı.");
-        ui::prompt();
-        return true;
-    }
+inline fs::path unique_path(const fs::path& directory, const std::string& filename) {
+    fs::path candidate = directory / filename;
+    for (unsigned int i = 1; fs::exists(candidate); ++i)
+        candidate = directory / (fs::path(filename).stem().string() + "_" + std::to_string(i) + fs::path(filename).extension().string());
+    return candidate;
+}
 
-    if (filename_len == 0 || filename_len > 255 || data_size == 0 || data_size > MAX_IMAGE_SIZE) {
-        ui::error("Geçersiz görsel paketi.");
-        return false;
+inline bool save_received_image(const Frame& frame, fs::path& saved, std::string& error) {
+    const fs::path directory = "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar";
+    std::error_code ec;
+    fs::create_directories(directory, ec);
+    if (ec) { error = "Alınan dosyalar dizini oluşturulamadı."; return false; }
+    const std::string filename = sanitized_filename(frame.filename);
+    int reservation = -1;
+    for (unsigned int attempt = 0; attempt < 10000; ++attempt) {
+        saved = unique_path(directory, filename);
+        reservation = ::open(saved.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        if (reservation >= 0 || errno != EEXIST) break;
     }
-
-    std::string raw_name(filename_len, '\0');
-    if (!read_exact(sock, raw_name.data(), filename_len)) return false;
-    std::string filename = safe_filename(raw_name);
-    if (!valid_image_extension(filename)) {
-        ui::error("Alınan dosyanın uzantısı kabul edilmiyor.");
-        return false;
-    }
-
-    fs::create_directories("702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar");
-    const fs::path output_dir = "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/04_Uygulama_Ciktilari/Alinan_Dosyalar";
-    fs::path save_path;
-    int reserved = -1;
-    for (int attempt = 0; attempt < 10000; ++attempt) {
-        save_path = unique_save_path(output_dir, filename);
-        reserved = ::open(save_path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
-        if (reserved >= 0 || errno != EEXIST) break;
-    }
-    if (reserved < 0) {
-        ui::error("Alınan dosya için benzersiz kayıt yolu oluşturulamadı.");
-        return false;
-    }
-    ::close(reserved);
-    std::ofstream out(save_path, std::ios::binary);
-    if (!out) {
-        fs::remove(save_path);
-        ui::error("Alınan dosya oluşturulamadı.");
-        return false;
-    }
-
-    std::vector<unsigned char> buffer(8192);
-    uint32_t remaining = data_size;
-    uint32_t received = 0;
-    uint32_t crc = crc32_begin();
-    int last_percent = -5;
-    while (remaining > 0) {
-        uint32_t n = std::min<uint32_t>(remaining, static_cast<uint32_t>(buffer.size()));
-        if (!read_exact(sock, buffer.data(), n)) {
-            out.close();
-            fs::remove(save_path);
-            ui::error("Görsel aktarımı yarıda kesildi.");
-            return false;
-        }
-        out.write(reinterpret_cast<char*>(buffer.data()), n);
-        if (!out) {
-            out.close();
-            fs::remove(save_path);
-            ui::error("Alınan görsel diske yazılamadı.");
-            return false;
-        }
-        crc = crc32_update(crc, buffer.data(), n);
-        remaining -= n;
-        received += n;
-        int percent = data_size ? static_cast<int>((static_cast<uint64_t>(received) * 100) / data_size) : 100;
-        if (percent >= last_percent + 5 || received == data_size) {
-            ui::progress("Alınıyor    ", received, data_size);
-            last_percent = percent;
-        }
-    }
+    if (reservation < 0) { error = "Benzersiz görüntü adı ayrılamadı."; return false; }
+    close(reservation);
+    fs::path temporary = saved;
+    temporary += ".part." + std::to_string(getpid());
+    std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+    if (!out) { fs::remove(saved, ec); error = "Geçici görüntü dosyası oluşturulamadı."; return false; }
+    out.write(reinterpret_cast<const char*>(frame.data.data()), static_cast<std::streamsize>(frame.data.size()));
     out.close();
-    if (!out) {
-        fs::remove(save_path);
-        ui::error("Alınan görsel dosyası tamamlanamadı.");
-        return false;
-    }
-    uint32_t actual_crc = crc32_end(crc);
-    if (actual_crc != expected_crc) {
-        fs::remove(save_path);
-        ui::error("Görsel CRC32 kontrolü başarısız; bozuk dosya silindi.");
-        ui::prompt();
-        return true;
-    }
-
-    ui::image_card(save_path.string(), data_size, actual_crc);
-    ui::prompt();
+    if (!out) { fs::remove(temporary, ec); fs::remove(saved, ec); error = "Görüntü diske yazılamadı."; return false; }
+    fs::rename(temporary, saved, ec);
+    if (ec) { fs::remove(temporary, ec); fs::remove(saved, ec); error = "Görüntü kaydı tamamlanamadı."; return false; }
     return true;
 }
 
-inline void receive_loop(int sock) {
-    while (receive_one(sock)) {}
-    ui::warn("Karşı taraf bağlantıyı kapattı veya bağlantı koptu.");
-}
+inline std::vector<unsigned char> bytes(const std::string& text) { return {text.begin(), text.end()}; }
 
 #endif
