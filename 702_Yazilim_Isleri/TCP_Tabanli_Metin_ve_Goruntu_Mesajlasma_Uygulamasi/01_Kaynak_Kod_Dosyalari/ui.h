@@ -123,18 +123,25 @@ inline void clear() {
 
 inline void banner(const std::string& role, const std::string& endpoint) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    const int width = std::min(58, columns() - 2);
-    std::cout << CYAN << BOLD;
-    border("╔", "═", "╗", width);
-    boxed_line("TCP CHAT  •  METİN + GÖRÜNTÜ", width);
-    border("╠", "═", "╣", width);
-    boxed_line("Rol      : " + role, width);
-    boxed_line("Uç Nokta : " + endpoint, width);
-    border("╚", "═", "╝", width);
-    std::cout << RESET << DIM
-              << "Komutlar  !liste  !hedef  !resim  !yardim  cikis\n"
-              << "          Görseli sürükle → Enter\n"
-              << RESET << "────────────────────────────────────────\n" << std::flush;
+    std::cout << CYAN << BOLD << "=== " << role << " ===" << RESET << '\n'
+              << DIM << endpoint << RESET << '\n';
+    if (role == "SUNUCU") {
+        std::cout << DIM << "Bağlantılar burada izlenir.\n" << RESET;
+    } else {
+        std::cout << "Alıcı: 3   Birkaç alıcı: 2,4   Herkes: 0   Görsel: !resim dosya.jpg\n";
+    }
+    std::cout << "----------------------------------------\n" << std::flush;
+}
+
+inline void client_ready(uint16_t id, const std::vector<uint16_t>& recipients) {
+    std::lock_guard<std::mutex> lock(out_mutex);
+    std::cout << "\033[2J\033[H"
+              << GREEN << BOLD << "HAZIR" << RESET << "  •  Kimlik: " << id << "  •  Alıcılar:";
+    for (uint16_t recipient : recipients) std::cout << " [" << recipient << ']';
+    if (recipients.empty()) std::cout << " yok";
+    std::cout << '\n'
+              << DIM << "Seçim: 3   Çoklu: 2,4   Herkes: 0   Görsel: !resim foto.jpg" << RESET << '\n'
+              << "────────────────────────────────────────\n\n" << std::flush;
 }
 
 inline void status(const std::string& text) {
@@ -155,25 +162,17 @@ inline void error(const std::string& text) {
 }
 inline void prompt() {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << '\n' << MAGENTA << BOLD << "╰─ Sen ❯ " << RESET << std::flush;
+    std::cout << MAGENTA << BOLD << "Mesaj > " << RESET << std::flush;
 }
 
 inline void message_box(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << '\n';
-    section_title("GELEN MESAJ", BLUE);
-    bubble("● KARŞI TARAF", text, BLUE, BG_THEIRS);
-    section_end();
-    std::cout << std::flush;
+    std::cout << '\n' << BLUE << BOLD << "Gelen  : " << RESET << text << "\n\n" << std::flush;
 }
 
 inline void sent_card(const std::string& text) {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << '\n';
-    section_title("GÖNDERİLDİ", MAGENTA);
-    bubble("● SEN", text, MAGENTA, BG_MINE);
-    section_end();
-    std::cout << std::flush;
+    std::cout << GREEN << "Gitti  : " << RESET << text << "\n\n" << std::flush;
 }
 
 inline std::string shell_quote(const std::string& s) {
@@ -228,16 +227,12 @@ inline void progress(const std::string& label, uint64_t done, uint64_t total) {
 
 inline void help() {
     std::lock_guard<std::mutex> lock(out_mutex);
-    std::cout << YELLOW << BOLD << "\nKOMUTLAR\n" << RESET
-              << "  normal metin          Karşı tarafa metin gönderir\n"
-              << "  !liste                Aktif hedef kimliklerini getirir\n"
-              << "  !hedef <kimlik>       Mesajların gönderileceği hedefi seçer\n"
-              << "  !resim <dosya>        JPG/JPEG/PNG görsel gönderir\n"
-              << "  dosya sürükle-bırak   Görseli komutsuz otomatik gönderir\n"
-              << "  !durum                Bağlantı durumunu gösterir\n"
-              << "  !temizle              Terminali temizler\n"
-              << "  !yardim               Bu menüyü gösterir\n"
-              << "  cikis                 Programı kapatır\n\n" << std::flush;
+    std::cout << YELLOW << BOLD << "\nKISA KULLANIM\n" << RESET
+              << "  Mesaj: doğrudan yazıp Enter'a basın\n"
+              << "  Görsel: !resim foto.jpg\n"
+              << "  Tek alıcı: 3   Birkaç alıcı: 2,4   Herkes: 0\n"
+              << "  Çıkış : cikis\n"
+              << "  Çok istemci varsa: !liste ve !hedef 2\n\n" << std::flush;
 }
 }
 #endif

@@ -8,18 +8,21 @@
 #include <mutex>
 #include <netinet/in.h>
 #include <string>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 #include "chat_common.h"
 
 namespace {
-constexpr int PORT = 5000;
+constexpr int DEFAULT_PORT = 5000;
 
 struct Client {
     uint16_t id;
     int socket;
     std::mutex send_mutex;
+    std::atomic<bool> ready{false};
     Client(uint16_t client_id, int socket_fd) : id(client_id), socket(socket_fd) {}
 };
 
@@ -45,15 +48,28 @@ uint16_t reserve_id() {
 Frame list_response(uint16_t requester) {
     Frame response{MSG_LIST_RESPONSE, 0, {}, {}};
     std::lock_guard<std::mutex> lock(clients_mutex);
-    response.data.push_back(static_cast<unsigned char>(clients.size() - 1));
+    response.data.push_back(0);
     for (const auto& [id, unused] : clients) {
-        (void)unused;
-        if (id == requester) continue;
+        if (id == requester || !unused->ready.load()) continue;
         const uint16_t network_id = htons(id);
         const auto* raw = reinterpret_cast<const unsigned char*>(&network_id);
         response.data.insert(response.data.end(), raw, raw + sizeof(network_id));
+        ++response.data[0];
     }
     return response;
+}
+
+void broadcast_lists() {
+    std::vector<std::shared_ptr<Client>> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex);
+        for (const auto& [id, client] : clients) {
+            (void)id;
+            if (client->ready.load()) snapshot.push_back(client);
+        }
+    }
+    for (const auto& client : snapshot)
+        send_locked(client, list_response(client->id));
 }
 
 bool valid_client_frame(const Frame& frame, std::string& error) {
@@ -86,7 +102,9 @@ void client_worker(const std::shared_ptr<Client>& client) {
     Frame assignment{MSG_ID_ASSIGN, 0, {}, std::vector<unsigned char>(2)};
     std::memcpy(assignment.data.data(), &network_id, 2);
     if (!send_locked(client, assignment)) goto cleanup;
+    client->ready.store(true);
     ui::status("İstemci bağlandı; kimlik: " + std::to_string(client->id));
+    broadcast_lists();
 
     for (;;) {
         Frame incoming;
@@ -134,13 +152,30 @@ cleanup:
         shutdown(client->socket, SHUT_RDWR);
         close(client->socket);
     }
+    broadcast_lists();
     ui::warn("İstemci ayrıldı; kimlik: " + std::to_string(client->id));
 }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    int port = DEFAULT_PORT;
+    if (argc == 2) {
+        try {
+            size_t used = 0;
+            const int requested = std::stoi(argv[1], &used);
+            if (used != std::strlen(argv[1]) || requested < 1 || requested > 65535)
+                throw std::out_of_range("port");
+            port = requested;
+        } catch (...) {
+            ui::error("Geçersiz port numarası.");
+            return 1;
+        }
+    } else if (argc > 2) {
+        ui::error("Kullanım: server [port]");
+        return 1;
+    }
     ui::clear();
-    ui::banner("SUNUCU", "0.0.0.0:5000 • en fazla 5 istemci");
+    ui::banner("SUNUCU", "0.0.0.0:" + std::to_string(port) + " • en fazla 5 istemci");
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) { ui::error("Socket oluşturulamadı."); return 1; }
     int enabled = 1;
@@ -148,13 +183,13 @@ int main() {
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    address.sin_port = htons(static_cast<uint16_t>(port));
     if (bind(server_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0 ||
         listen(server_fd, MAX_CLIENTS) < 0) {
         ui::error(std::string("Sunucu başlatılamadı: ") + std::strerror(errno));
         close(server_fd); return 1;
     }
-    ui::info("5000/TCP dinleniyor; protokol: 13 bayt başlık + CRC32.");
+    ui::info(std::to_string(port) + "/TCP dinleniyor; protokol: 13 bayt başlık + CRC32.");
     for (;;) {
         int socket_fd = accept(server_fd, nullptr, nullptr);
         if (socket_fd < 0) { if (errno == EINTR) continue; ui::error("accept başarısız."); break; }

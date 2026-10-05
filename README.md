@@ -10,6 +10,39 @@ Uygulama, Windows 11 üzerinde **WSL2 / Ubuntu 20.04 LTS** ortamında çalışı
 
 ---
 
+## Hızlı Başlangıç
+
+Windows PowerShell'i proje klasöründe açın ve tek komut çalıştırın:
+
+```powershell
+.\baslat
+```
+
+Komut projeyi derler; bir sunucu ile beş istemciyi düzenli terminal panellerinde açar.
+Gönderen istemcinin paneline tıklayın ve alıcı seçimini yapın:
+
+```text
+3       Yalnız İstemci 3
+2,4     İstemci 2 ve 4
+0       Gönderen dışındaki bütün istemciler
+```
+
+Seçimden sonra metni doğrudan yazın. Görüntü göndermek için:
+
+```text
+!resim foto1.jpg
+```
+
+Tam doğrulama için Ubuntu/WSL terminalinde:
+
+```bash
+bash 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/dogrula.sh
+```
+
+Ayrıntılı kullanım için [Çalıştırma Kılavuzu](CALISTIRMA_KILAVUZU.md) dosyasına bakın.
+
+---
+
 ## 1. Projenin Amacı
 
 Projenin temel amacı, TCP'nin güvenilir ve sıralı bayt akışı yapısı üzerinde uygulama seviyesinde bir mesajlaşma protokolü oluşturmaktır. Bu kapsamda sistem aşağıdaki işlevleri gerçekleştirir:
@@ -24,7 +57,7 @@ Projenin temel amacı, TCP'nin güvenilir ve sıralı bayt akışı yapısı üz
 - Aynı isimli dosyaların üzerine yazılmasının önlenmesi
 - Gönderim ve alım ilerlemesinin terminalde gösterilmesi
 - Gelen görüntünün `chafa` ile terminal içinde önizlenmesi
-- `tmux` ile sunucu ve istemcinin aynı ekranda iki ayrı panelde çalıştırılması
+- `tmux` ile sunucu ve beş istemcinin aynı ekranda izlenmesi
 
 ---
 
@@ -238,10 +271,10 @@ Başarılı derleme sonucunda aşağıdaki dosyalar oluşturulur:
 Proje kök dizininde:
 
 ```powershell
-wsl -d Ubuntu-20.04 --cd "$PWD" bash -lc "chmod +x 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/*.sh && 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/calistir.sh"
+.\baslat
 ```
 
-Bu işlem projeyi derler ve `tmux` üzerinde sunucu ile istemciyi iki ayrı panelde açar.
+Bu işlem projeyi derler ve `tmux` üzerinde sunucu ile beş istemciyi açar.
 
 ### WSL / Ubuntu üzerinden
 
@@ -283,8 +316,11 @@ Test görüntüsü göndermek için:
 
 Desteklenen komutlar:
 
-| Komut | İşlev |
+| Girdi | İşlev |
 |---|---|
+| `3` | Yalnız İstemci 3'ü alıcı seçer. |
+| `2,4` | İstemci 2 ve 4'ü birlikte seçer. |
+| `0` | Gönderen dışındaki bütün istemcileri seçer. |
 | `!liste` | Mesaj gönderilebilecek aktif istemci kimliklerini getirir. |
 | `!hedef <kimlik>` | Metin ve görüntülerin gönderileceği istemciyi seçer. |
 | `!resim <dosya_adı veya dosya_yolu>` | JPG/JPEG/PNG görüntü gönderir. Yalın adlar test klasöründe aranır. |

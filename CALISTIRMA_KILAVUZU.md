@@ -1,70 +1,76 @@
-# Kurulum, doğrulama ve gösterim
+# Kısa Çalıştırma Kılavuzu
 
-## Windows / WSL2
+## Gereksinimler
 
-Ubuntu-20.04 yüklü olmalıdır. Proje klasöründe PowerShell açın:
+- Windows 11
+- WSL2 ve `Ubuntu-20.04`
+- İlk kurulum için internet bağlantısı ve `sudo` yetkisi
+
+Uygulama ve testlerin tamamı C++17 ile yazılmıştır.
+
+## Başlatma
+
+PowerShell'i proje klasöründe açın:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/calistir.ps1"
+.\baslat
 ```
 
-Başlatıcı proje yolunu kendi konumundan bulur. Gerekli `g++`, `make`, `tmux`, `chafa` ve `iproute2` araçlarını kurar, derler; bir sunucu ve iki istemci için üç terminal bölmesi açar. Paket kurulumu internet ve sudo yetkisi gerektirir.
+İlk çalıştırmada gerekli Ubuntu paketleri kurulabilir. Ardından proje derlenir ve aynı
+ekranda bir sunucu ile beş istemci açılır.
 
-## Linux / WSL terminali
+PowerShell proje klasöründe değilse:
 
-Proje kökünde:
-
-```bash
-b="702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari"
-bash "$b/kur.sh"
-bash "$b/dogrula.sh"
-bash "$b/calistir.sh"
+```powershell
+cd "$HOME\LBLM301 Veri Haberleşmesi ve Bilgisayar Ağları\cpp-tcp-messenger"; .\baslat
 ```
 
-Doğrulama, 13 baytlık protokol birim testlerini ve gerçek TCP üzerinde beş istemcili yönlendirme testini içerir. Mevcut gösterimi `cikis` ile kapatın; sonra `dogrula.sh` çalıştırın. GitHub Actions aynı doğrulamayı her push ve pull request için çalıştırır.
+## Mesaj Gönderme
 
-## Gösterim
-
-Sunucu ve iki istemci ayrı bölmelerde açılır. Her istemci önce kendisine atanan kimliği gösterir. İstemcide hedef seçmek için:
+Önce gönderen istemcinin paneline fareyle tıklayın. Sonra alıcıyı seçin:
 
 ```text
-!liste
-!hedef <diğer istemcinin kimliği>
+3       Yalnız İstemci 3
+2,4     İstemci 2 ve 4
+0       Gönderen dışındaki herkes
 ```
 
-Ardından normal metin yazabilir veya görüntü gönderebilirsiniz:
+Enter'a bastıktan sonra mesajınızı doğrudan yazın:
 
 ```text
-!resim piksel_test.png
+Merhaba
 ```
 
-`foto1.jpg`, `piksel_test.jpg` ve `piksel_test.png` gibi yalın adlar otomatik olarak
-`03_Test_ve_Dogrulama_Calismalari/Test_Verileri` klasöründe aranır. Windows Gezgini'nden
-sürüklenen dosyanın başındaki/sonundaki tırnaklar ve `C:\...` yolu da otomatik temizlenip
-WSL yoluna çevrilir. Alıcı dosyayı kaydeder, CRC32 doğrular ve renkli piksel bloklarıyla
-terminalde gösterir. Önizleme ölçeklenir; kaydedilen dosyanın baytları değişmez.
-Boşluklu bir dosya yolu çift tırnak içine alınabilir.
+## Görüntü Gönderme
 
-Artık Windows Gezgini'nden görseli terminale sürükleyip yalnızca Enter'a basmak yeterlidir;
-`!resim` yazmak zorunlu değildir. JPG/JPEG/PNG dosyası otomatik olarak ikili görsel
-paketi olarak gönderilir, karşı tarafta `chafa` ile piksel blokları gösterilir.
+Alıcıları seçtikten sonra:
 
-`!liste`, `!hedef`, `!yardim`, `!durum`, `!temizle` ve `cikis` komutları istemcilerde çalışır. Aynı adlı dosyalar ayrı adlarla kaydedilir. Bağlantı koptuğunda istemci otomatik kapanır. Alınan dosyalar `04_Uygulama_Ciktilari/Alinan_Dosyalar` altındadır.
+```text
+!resim foto1.jpg
+```
 
-## VS Code
+JPG, JPEG ve PNG desteklenir. Yalın dosya adları test verileri klasöründe aranır.
+Windows Gezgini'nden görüntüyü istemci paneline sürükleyip Enter'a basmak da mümkündür.
+Alınan görüntüler `04_Uygulama_Ciktilari/Alinan_Dosyalar` dizinine kaydedilir.
 
-Pencerenin sol altında `WSL: Ubuntu-20.04` görünmelidir. `Ctrl+Shift+B` derleme yapar. `Terminal > Run Task` üzerinden `TCP: Tam dogrulama`, `TCP: Iki bolmeli demo`, `TCP: Sunucu` ve `TCP: Istemci` görevleri açılır. Sunucu ve istemci görevleri aynı terminal grubunda gösterilir. Eski Windows VS Code penceresini elle kapatın.
+## Diğer Komutlar
 
-## WSL'den GitHub'a kaydetme ve gönderme
+```text
+!durum      Bağlantı ve seçili alıcıları gösterir
+!liste      Aktif istemcileri yeniden listeler
+!temizle    İstemci ekranını temizler
+!yardim     Kısa yardımı gösterir
+cikis       İstemciyi kapatır
+```
 
-Editördeki değişiklikler Git'e ancak dosya diske yazıldıktan sonra görünür. Önce `Ctrl+S`
-ile kaydedin, ardından proje kökünde aşağıdaki komutu çalıştırın:
+## Tam Doğrulama
+
+Ubuntu/WSL terminalinde proje kökünden:
 
 ```bash
-b="702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari"
-bash "$b/git-sync.sh" "UX: kısa görsel yolu ve WSL senkronizasyonu"
+bash 702_Yazilim_Isleri/TCP_Tabanli_Metin_ve_Goruntu_Mesajlasma_Uygulamasi/02_Derleme_ve_Calistirma_Dosyalari/dogrula.sh
 ```
 
-Betik önce dosyaların okunabildiğini, Git indeksinin güncel olduğunu ve boşluk hatası
-olmadığını doğrular; değişiklik yoksa push yapmadan durur. WSL'de Windows Git Credential
-Manager bulunuyorsa yerel depo ayarında yalnızca onu kullanır ve ardından commit/push yapar.
+Doğrulama; `-Werror` ile temiz derleme, 13 baytlık protokol ve CRC32 birim testleri,
+beş istemcili gerçek TCP yönlendirmesi, metin ve görüntü aktarımı, kapasite sınırı ve
+ayrılan istemcinin yerine yeni bağlantı kabulünü denetler.
